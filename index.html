@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f0f1a">
+  <meta name="apple-mobile-web-app-title" content="钢琴工作台">
+  <link rel="manifest" href="manifest.json">
+  <title>🎹 钢琴学习工作台</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --card: #1a1a2e;
+      --accent: #e94560;
+      --accent2: #533483;
+      --text: #eaeaea;
+      --text-dim: #8888aa;
+      --success: #00d9a3;
+      --warning: #ffc107;
+      --border: #2a2a4a;
+      --piano-white: #f0f0f0;
+      --piano-black: #1a1a1a;
+      --nav-h: 64px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+      background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+      -webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;
+      padding-bottom:calc(var(--nav-h) + var(--safe-bottom) + 20px);
+    }
+    .app{max-width:480px;margin:0 auto;padding:0 12px;}
+
+    header{
+      position:sticky;top:0;z-index:100;
+      background:rgba(15,15,26,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      padding:12px 0 8px;text-align:center;
+    }
+    header h1{font-size:1.25rem;font-weight:700;letter-spacing:1px;}
+    header h1 span{color:var(--accent);}
+    header .date{color:var(--text-dim);font-size:0.75rem;margin-top:2px;}
+    header .install-hint{
+      color:var(--accent);font-size:0.7rem;margin-top:4px;cursor:pointer;
+      text-decoration:underline;text-underline-offset:2px;
+    }
+
+    .overview-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:12px -12px;padding:0 12px;}
+    .overview-scroll::-webkit-scrollbar{display:none;}
+    .overview{display:flex;gap:8px;min-width:min-content;}
+    .stat-card{
+      background:var(--card);border:1px solid var(--border);border-radius:14px;
+      padding:12px 14px;text-align:center;min-width:88px;flex-shrink:0;cursor:pointer;transition:all .15s;
+    }
+    .stat-card:active{background:#222244;transform:scale(.97);}
+    .stat-card .icon{font-size:1.3rem;margin-bottom:3px;}
+    .stat-card .value{font-size:1.4rem;font-weight:700;color:var(--accent);}
+    .stat-card .label{color:var(--text-dim);font-size:0.68rem;white-space:nowrap;}
+
+    .page{display:none;animation:fadeIn .25s ease;}
+    .page.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+    /* 卡片 */
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin:12px 0;
+    }
+    .card-title{
+      font-size:0.95rem;font-weight:600;margin-bottom:14px;
+      display:flex;align-items:center;gap:6px;justify-content:space-between;
+    }
+    .card-title .title-left{display:flex;align-items:center;gap:6px;}
+
+    /* 按钮 */
+    .btn{
+      padding:10px 18px;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;
+      cursor:pointer;transition:all .12s;font-family:inherit;-webkit-tap-highlight-color:transparent;white-space:nowrap;
+    }
+    .btn:active{transform:scale(.94);}
+    .btn-primary{background:var(--accent);color:white;}
+    .btn-secondary{background:var(--border);color:var(--text);}
+    .btn-sm{padding:6px 12px;font-size:0.78rem;border-radius:8px;}
+    .btn-xs{padding:4px 10px;font-size:0.72rem;border-radius:6px;}
+    .btn-icon{
+      width:32px;height:32px;border-radius:8px;border:none;background:var(--border);color:var(--text);
+      font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    }
+    .btn-icon:active{background:var(--accent2);}
+
+    /* 编辑列表项 */
+    .edit-item{
+      display:flex;align-items:center;gap:8px;padding:8px 0;
+      border-bottom:1px solid rgba(255,255,255,0.04);
+    }
+    .edit-item:last-child{border-bottom:none;}
+    .edit-item .item-name{
+      flex:1;font-size:0.88rem;
+      -webkit-user-select:text;user-select:text;
+    }
+    .edit-item .item-name input{
+      width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;
+      padding:6px 10px;color:var(--text);font-family:inherit;font-size:0.85rem;outline:none;
+    }
+    .edit-item .item-name input:focus{border-color:var(--accent2);}
+
+    .counter{
+      display:flex;align-items:center;gap:4px;background:var(--bg);border-radius:8px;padding:2px;
+    }
+    .counter button{
+      width:30px;height:30px;border:none;border-radius:6px;background:var(--border);
+      color:var(--text);font-size:1rem;font-weight:600;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .counter button:active{background:var(--accent2);}
+    .counter .count{min-width:24px;text-align:center;font-weight:700;font-size:0.95rem;}
+
+    .check-btn{
+      width:36px;height:36px;border:2.5px solid var(--border);border-radius:10px;
+      background:transparent;color:var(--text-dim);cursor:pointer;
+      display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .12s;
+    }
+    .check-btn:active{transform:scale(.9);}
+    .check-btn.done{background:var(--success);border-color:var(--success);color:var(--bg);}
+
+    .delete-btn{
+      width:28px;height:28px;border:none;border-radius:6px;background:transparent;
+      color:var(--text-dim);font-size:0.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    }
+    .delete-btn:active{background:rgba(233,69,96,0.2);color:var(--accent);}
+
+    .add-row{
+      display:flex;gap:6px;margin-top:10px;
+    }
+    .add-row input{
+      flex:1;background:var(--bg);border:1px dashed var(--border);border-radius:8px;
+      padding:8px 12px;color:var(--text);font-family:inherit;font-size:0.82rem;outline:none;
+      -webkit-user-select:text;user-select:text;
+    }
+    .add-row input:focus{border-color:var(--accent2);border-style:solid;}
+    .add-row input::placeholder{color:var(--text-dim);}
+
+    /* 节拍器 */
+    .metro-main{
+      display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:14px;
+    }
+    .bpm-value{font-size:3.2rem;font-weight:700;color:var(--accent);line-height:1;}
+    .bpm-label{color:var(--text-dim);font-size:0.75rem;text-align:center;}
+    .beat-dots{display:flex;gap:7px;}
+    .beat-dot{
+      width:18px;height:18px;border-radius:50%;background:var(--border);transition:all .04s;
+    }
+    .beat-dot.active{background:var(--accent);box-shadow:0 0 14px var(--accent);}
+    .beat-dot.accent{background:var(--warning);box-shadow:0 0 14px var(--warning);}
+    .btn-play{
+      width:52px;height:52px;border-radius:50%;background:var(--accent);color:white;
+      border:none;font-size:1.3rem;cursor:pointer;transition:all .12s;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .btn-play:active{transform:scale(.88);}
+    .btn-play.playing{background:var(--border);}
+    input[type="range"]{
+      flex:1;-webkit-appearance:none;height:8px;border-radius:4px;background:var(--border);outline:none;min-width:80px;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--accent);cursor:pointer;
+    }
+    .tag-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+    .tag{
+      padding:5px 12px;border-radius:16px;border:1px solid var(--border);background:transparent;
+      color:var(--text-dim);font-size:0.75rem;cursor:pointer;font-family:inherit;transition:all .12s;
+    }
+    .tag:active,.tag.active{background:var(--accent2);border-color:var(--accent2);color:white;}
+
+    /* 钢琴 */
+    .piano-wrap{
+      overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:8px;
+    }
+    .piano-wrap::-webkit-scrollbar{display:none;}
+    .piano{display:flex;position:relative;height:110px;min-width:420px;}
+    .white-key{
+      width:36px;height:110px;background:var(--piano-white);border:1px solid #ccc;
+      border-radius:0 0 5px 5px;display:flex;align-items:flex-end;justify-content:center;
+      padding-bottom:3px;font-size:0.55rem;color:#888;cursor:pointer;touch-action:manipulation;
+    }
+    .white-key:active,.white-key.active{background:var(--accent);color:white;}
+    .black-keys{position:absolute;top:0;display:flex;pointer-events:none;}
+    .black-key{
+      width:22px;height:70px;background:var(--piano-black);border-radius:0 0 3px 3px;
+      position:absolute;pointer-events:auto;cursor:pointer;touch-action:manipulation;
+    }
+    .black-key:active,.black-key.active{background:var(--accent);}
+
+    /* 日历 */
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;}
+    .cal-hdr{font-size:0.65rem;color:var(--text-dim);padding:5px 0;}
+    .cal-day{
+      aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+      border-radius:7px;font-size:0.75rem;cursor:pointer;transition:all .12s;
+    }
+    .cal-day:active{background:#222244;}
+    .cal-day.today{border:2px solid var(--accent);font-weight:700;}
+    .cal-day.practiced{background:rgba(0,217,163,0.12);color:var(--success);}
+    .cal-day.other{color:var(--text-dim);opacity:0.4;}
+
+    /* 底部导航 */
+    .bottom-nav{
+      position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);
+      background:rgba(20,20,40,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border-top:1px solid var(--border);display:flex;z-index:200;padding-bottom:var(--safe-bottom);
+    }
+    .nav-item{
+      flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+      color:var(--text-dim);font-size:0.6rem;cursor:pointer;transition:all .12s;
+      border:none;background:none;font-family:inherit;-webkit-tap-highlight-color:transparent;
+    }
+    .nav-item .nav-icon{font-size:1.2rem;}
+    .nav-item.active{color:var(--accent);}
+
+    .toast{
+      position:fixed;top:16px;left:50%;transform:translateX(-50%);
+      background:var(--success);color:var(--bg);padding:8px 20px;border-radius:18px;
+      font-weight:600;font-size:0.8rem;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;
+    }
+    .toast.show{opacity:1;}
+
+    /* 历史日详情弹窗 */
+    .overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:149;
+      opacity:0;pointer-events:none;transition:opacity .25s;
+    }
+    .overlay.show{opacity:1;pointer-events:auto;}
+    .popup{
+      position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 16px);
+      left:12px;right:12px;background:var(--card);border:1px solid var(--border);
+      border-radius:16px;padding:18px;z-index:150;max-height:55vh;overflow-y:auto;
+      transform:translateY(120%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .popup.show{transform:translateY(0);}
+    .popup-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+    .playing .beat-dot.active{animation:pulse .2s;}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🎹 <span>钢琴</span>学习工作台</h1>
+      <div class="date" id="currentDate"></div>
+      <div class="install-hint" id="installHint" style="display:none;" onclick="promptInstall()">📲 添加到桌面，每天打卡更方便</div>
+    </header>
+
+    <!-- 概览 -->
+    <div class="overview-scroll">
+      <div class="overview">
+        <div class="stat-card" onclick="switchPage('practice')">
+          <div class="icon">🔄</div><div class="value" id="ovReview">0</div><div class="label">复习项</div>
+        </div>
+        <div class="stat-card" onclick="switchPage('practice')">
+          <div class="icon">💪</div><div class="value" id="ovBasic">0</div><div class="label">基本功</div>
+        </div>
+        <div class="stat-card" onclick="switchPage('practice')">
+          <div class="icon">🎵</div><div class="value" id="ovPiece">0</div><div class="label">乐曲</div>
+        </div>
+        <div class="stat-card">
+          <div class="icon">⏱️</div><div class="value" id="ovTime">0</div><div class="label">分钟</div>
+        </div>
+        <div class="stat-card" onclick="switchPage('calendar')">
+          <div class="icon">🔥</div><div class="value" id="ovStreak">0</div><div class="label">连续天</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 练习页 ===== -->
+    <div class="page active" id="page-practice">
+      <!-- 节拍器 -->
+      <div class="card">
+        <div class="card-title"><div class="title-left">🥁 节拍器</div></div>
+        <div class="metro-main">
+          <div><div class="bpm-value" id="bpmValue">100</div><div class="bpm-label">BPM</div></div>
+          <button class="btn-play" id="metroBtn" onclick="toggleMetro()">▶</button>
+          <div class="beat-dots" id="beatDots">
+            <div class="beat-dot" data-b="1"></div><div class="beat-dot" data-b="2"></div>
+            <div class="beat-dot" data-b="3"></div><div class="beat-dot" data-b="4"></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-sm btn-secondary" onclick="chBpm(-5)">−</button>
+          <input type="range" id="bpmSlider" min="40" max="208" value="100" oninput="setBpm(this.value)">
+          <button class="btn btn-sm btn-secondary" onclick="chBpm(5)">+</button>
+        </div>
+        <div class="tag-row">
+          <button class="tag" onclick="presetBpm(60)">60</button>
+          <button class="tag" onclick="presetBpm(80)">80</button>
+          <button class="tag active" onclick="presetBpm(100)">100</button>
+          <button class="tag" onclick="presetBpm(120)">120</button>
+          <button class="tag" onclick="presetBpm(144)">144</button>
+          <select style="margin-left:auto;padding:5px 8px;border-radius:16px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:0.72rem;font-family:inherit;" id="timeSig" onchange="chTimeSig()">
+            <option value="4">4/4</option><option value="3">3/4</option><option value="2">2/4</option><option value="6">6/8</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 🔄 复习 -->
+      <div class="card" id="reviewCard">
+        <div class="card-title">
+          <div class="title-left">🔄 今日复习</div>
+          <span style="font-size:0.7rem;color:var(--text-dim);" id="reviewDoneInfo"></span>
+        </div>
+        <div id="reviewList"></div>
+        <div class="add-row">
+          <input type="text" id="reviewInput" placeholder="添加复习曲目，如：小汤2-上学的日子" onkeydown="if(event.key==='Enter')addItem('review')">
+          <button class="btn btn-sm btn-primary" onclick="addItem('review')">+ 添加</button>
+        </div>
+      </div>
+
+      <!-- 💪 基本功 -->
+      <div class="card" id="basicCard">
+        <div class="card-title">
+          <div class="title-left">💪 今日基本功</div>
+          <span style="font-size:0.7rem;color:var(--text-dim);" id="basicDoneInfo"></span>
+        </div>
+        <div id="basicList"></div>
+        <div class="add-row">
+          <input type="text" id="basicInput" placeholder="添加练习，如：拜厄 No.12 @BPM100" onkeydown="if(event.key==='Enter')addItem('basic')">
+          <button class="btn btn-sm btn-primary" onclick="addItem('basic')">+ 添加</button>
+        </div>
+      </div>
+
+      <!-- 🎵 乐曲 -->
+      <div class="card" id="pieceCard">
+        <div class="card-title">
+          <div class="title-left">🎵 今日新学乐曲</div>
+          <span style="font-size:0.7rem;color:var(--text-dim);" id="pieceDoneInfo"></span>
+        </div>
+        <div id="pieceList"></div>
+        <div class="add-row">
+          <input type="text" id="pieceInput" placeholder="添加乐曲，如：大汤1-音苑" onkeydown="if(event.key==='Enter')addItem('piece')">
+          <button class="btn btn-sm btn-primary" onclick="addItem('piece')">+ 添加</button>
+        </div>
+      </div>
+
+      <!-- 📝 今日笔记 -->
+      <div class="card">
+        <div class="card-title"><div class="title-left">📝 今日练习笔记</div></div>
+        <textarea id="todayNotes" style="width:100%;min-height:80px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:inherit;font-size:0.85rem;resize:vertical;outline:none;-webkit-user-select:text;user-select:text;" placeholder="今天练了什么？有什么难点？老师说了什么？"></textarea>
+        <div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
+          <button class="btn btn-sm btn-primary" onclick="saveTodayNotes()">💾 保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 钢琴页 ===== -->
+    <div class="page" id="page-piano">
+      <div class="card">
+        <div class="card-title"><div class="title-left">🎹 虚拟钢琴</div></div>
+        <div class="piano-wrap"><div class="piano" id="piano"></div></div>
+        <p style="text-align:center;color:var(--text-dim);margin-top:8px;font-size:0.7rem;">点击演奏 · 左右滑动</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="title-left">💡 参考音</div></div>
+        <div class="tag-row">
+          <button class="tag" onclick="playRef(0)">C do</button>
+          <button class="tag" onclick="playRef(2)">D re</button>
+          <button class="tag" onclick="playRef(4)">E mi</button>
+          <button class="tag" onclick="playRef(5)">F fa</button>
+          <button class="tag" onclick="playRef(7)">G sol</button>
+          <button class="tag" onclick="playRef(9)">A la</button>
+          <button class="tag" onclick="playRef(11)">B si</button>
+          <button class="tag" onclick="playRef(12)">C'</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 日历页 ===== -->
+    <div class="page" id="page-calendar">
+      <div class="card">
+        <div class="card-title"><div class="title-left">📅 练习日历</div></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+          <button class="btn btn-sm btn-secondary" onclick="chCalMonth(-1)">◀</button>
+          <span style="flex:1;text-align:center;font-weight:600;" id="calTitle"></span>
+          <button class="btn btn-sm btn-secondary" onclick="chCalMonth(1)">▶</button>
+        </div>
+        <div class="cal-grid" id="calendar"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="title-left">📋 历史记录</div></div>
+        <div id="historyList" style="max-height:300px;overflow-y:auto;">
+          <p style="color:var(--text-dim);font-size:0.82rem;text-align:center;padding:16px;">点击日历上的日期查看详情</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部导航 -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="practice" onclick="switchPage('practice')">
+      <span class="nav-icon">🏠</span>练习
+    </button>
+    <button class="nav-item" data-page="piano" onclick="switchPage('piano')">
+      <span class="nav-icon">🎹</span>钢琴
+    </button>
+    <button class="nav-item" data-page="calendar" onclick="switchPage('calendar')">
+      <span class="nav-icon">📅</span>日历
+    </button>
+  </nav>
+
+  <!-- 历史日详情弹窗 -->
+  <div class="overlay" id="dayOverlay" onclick="hideDayPopup()"></div>
+  <div class="popup" id="dayPopup">
+    <div class="popup-header">
+      <span class="card-title" style="margin:0;" id="dayPopupTitle">某日详情</span>
+      <button class="btn-icon" onclick="hideDayPopup()">✕</button>
+    </div>
+    <div id="dayPopupContent"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ===== 数据模型 =====
+    // practiceData[dateString] = { review:[{name, count}], basic:[{name, count}], pieces:[{name, done}], notes, time }
+    let data = JSON.parse(localStorage.getItem('pp_data') || '{}');
+    let calYear, calMonth;
+    let currentPage = 'practice';
+    let pianoDone = false;
+
+    function todayKey(){ return new Date().toDateString(); }
+
+    function ensureToday(){
+      const k = todayKey();
+      if(!data[k]) data[k] = { review:[], basic:[], pieces:[], notes:'', time:0 };
+      return data[k];
+    }
+
+    function save(){ localStorage.setItem('pp_data', JSON.stringify(data)); }
+
+    // ===== 页面切换 =====
+    function switchPage(name){
+      currentPage = name;
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.getElementById('page-'+name).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+      document.querySelector(`.nav-item[data-page="${name}"]`).classList.add('active');
+      if(name==='piano' && !pianoDone){ renderPiano(); pianoDone=true; }
+      if(name==='calendar') renderCalendar();
+      window.scrollTo(0,0);
+    }
+
+    // ===== Toast =====
+    let tt;
+    function toast(m){
+      const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
+      clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),1600);
+    }
+
+    // ===== 列表渲染 =====
+    function renderReview(){
+      const td = ensureToday();
+      const c = document.getElementById('reviewList');
+      c.innerHTML = td.review.map((item,i)=>`
+        <div class="edit-item">
+          <span class="item-name">${esc(item.name)}</span>
+          <div class="counter">
+            <button onclick="chgCount('review',${i},-1)">−</button>
+            <span class="count">${item.count||0}</span>
+            <button onclick="chgCount('review',${i},1)">+</button>
+          </div>
+          <button class="delete-btn" onclick="delItem('review',${i})">🗑</button>
+        </div>`).join('');
+      document.getElementById('reviewDoneInfo').textContent = td.review.length ? `${td.review.length}项` : '';
+    }
+
+    function renderBasic(){
+      const td = ensureToday();
+      const c = document.getElementById('basicList');
+      c.innerHTML = td.basic.map((item,i)=>`
+        <div class="edit-item">
+          <span class="item-name">${esc(item.name)}</span>
+          <div class="counter">
+            <button onclick="chgCount('basic',${i},-1)">−</button>
+            <span class="count">${item.count||0}</span>
+            <button onclick="chgCount('basic',${i},1)">+</button>
+          </div>
+          <button class="delete-btn" onclick="delItem('basic',${i})">🗑</button>
+        </div>`).join('');
+      document.getElementById('basicDoneInfo').textContent = td.basic.length ? `${td.basic.length}项` : '';
+    }
+
+    function renderPieces(){
+      const td = ensureToday();
+      const c = document.getElementById('pieceList');
+      c.innerHTML = td.pieces.map((item,i)=>`
+        <div class="edit-item">
+          <span class="item-name" style="${item.done?'color:var(--success);text-decoration:line-through':''}">${esc(item.name)}</span>
+          <button class="check-btn ${item.done?'done':''}" onclick="togglePiece(${i})">${item.done?'✓':''}</button>
+          <button class="delete-btn" onclick="delItem('pieces',${i})">🗑</button>
+        </div>`).join('');
+      const done = td.pieces.filter(p=>p.done).length;
+      document.getElementById('pieceDoneInfo').textContent = td.pieces.length ? `${done}/${td.pieces.length}` : '';
+    }
+
+    function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // ===== 增删改 =====
+    function addItem(type){
+      const input = document.getElementById(type+'Input');
+      const name = input.value.trim();
+      if(!name) return;
+      const td = ensureToday();
+      if(type==='review') td.review.push({name, count:0});
+      else if(type==='basic') td.basic.push({name, count:0});
+      else if(type==='piece') td.pieces.push({name, done:false});
+      save();
+      input.value = '';
+      refreshAll();
+      toast('已添加 ✓');
+    }
+
+    function delItem(type, idx){
+      const td = ensureToday();
+      const arr = type==='review'?td.review:type==='basic'?td.basic:td.pieces;
+      arr.splice(idx,1);
+      save();
+      refreshAll();
+    }
+
+    function chgCount(type, idx, delta){
+      const td = ensureToday();
+      const arr = type==='review'?td.review:type==='basic'?td.basic:td.pieces;
+      arr[idx].count = Math.max(0, (arr[idx].count||0) + delta);
+      save();
+      if(type==='review') renderReview();
+      else if(type==='basic') renderBasic();
+      updateOverview();
+    }
+
+    function togglePiece(idx){
+      const td = ensureToday();
+      td.pieces[idx].done = !td.pieces[idx].done;
+      save();
+      renderPieces();
+      updateOverview();
+      if(td.pieces[idx].done) toast('完成 ✓');
+    }
+
+    function refreshAll(){
+      renderReview(); renderBasic(); renderPieces();
+      updateOverview();
+    }
+
+    // ===== 概览 =====
+    function updateOverview(){
+      const td = ensureToday();
+      document.getElementById('ovReview').textContent = td.review.length;
+      document.getElementById('ovBasic').textContent = td.basic.length;
+      document.getElementById('ovPiece').textContent = td.pieces.filter(p=>p.done).length;
+      document.getElementById('ovTime').textContent = td.time||0;
+      document.getElementById('ovStreak').textContent = calcStreak();
+    }
+
+    function calcStreak(){
+      let s=0; const d=new Date();
+      while(true){
+        const k = new Date(d).toDateString();
+        if(data[k] && (data[k].review.length||data[k].basic.length||data[k].pieces.length||data[k].notes)){ s++; d.setDate(d.getDate()-1); }
+        else break;
+      }
+      return s;
+    }
+
+    // ===== 节拍器 =====
+    let metroInt=null, curBeat=0, audioCtx=null;
+    function initAudio(){
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      if(audioCtx.state==='suspended') audioCtx.resume();
+    }
+    function click(accent){
+      try{
+        initAudio();
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.connect(g);g.connect(audioCtx.destination);
+        o.frequency.value=accent?1000:800;o.type='sine';
+        g.gain.setValueAtTime(accent?.4:.25,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.08);
+        o.start();o.stop(audioCtx.currentTime+.08);
+      }catch(e){}
+    }
+    function toggleMetro(){
+      const btn=document.getElementById('metroBtn');
+      if(metroInt){
+        clearInterval(metroInt);metroInt=null;
+        btn.textContent='▶';btn.classList.remove('playing');
+        document.querySelector('.metro-main').classList.remove('playing');
+      }else{
+        initAudio();
+        const bpm=parseInt(document.getElementById('bpmSlider').value);
+        const beats=parseInt(document.getElementById('timeSig').value);
+        curBeat=0;
+        metroInt=setInterval(()=>{
+          curBeat=(curBeat%beats)+1;
+          document.querySelectorAll('.beat-dot').forEach((d,i)=>{
+            d.classList.remove('active','accent');
+            if(i+1===curBeat){d.classList.add('active');if(curBeat===1)d.classList.add('accent');}
+          });
+          click(curBeat===1);
+        },60000/bpm);
+        btn.textContent='⏸';btn.classList.add('playing');
+        document.querySelector('.metro-main').classList.add('playing');
+      }
+    }
+    function setBpm(v){
+      document.getElementById('bpmValue').textContent=v;
+      if(metroInt){toggleMetro();toggleMetro();}
+    }
+    function presetBpm(v){
+      document.getElementById('bpmSlider').value=v;setBpm(v);
+      document.querySelectorAll('.metro-main .tag').forEach(t=>t.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+    function chBpm(d){
+      const s=document.getElementById('bpmSlider');
+      s.value=Math.max(40,Math.min(208,parseInt(s.value)+d));setBpm(s.value);
+    }
+    function chTimeSig(){
+      const beats=parseInt(document.getElementById('timeSig').value);
+      const dots=document.getElementById('beatDots');dots.innerHTML='';
+      for(let i=1;i<=beats;i++){const d=document.createElement('div');d.className='beat-dot';d.dataset.b=i;dots.appendChild(d);}
+      if(metroInt){toggleMetro();toggleMetro();}
+    }
+
+    // ===== 钢琴 =====
+    const notes=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    function renderPiano(){
+      const p=document.getElementById('piano');p.innerHTML='';
+      const white=[0,2,4,5,7,9,11,12], black=[1,3,6,8,10], boff=[24,62,134,170,206];
+      white.forEach(n=>{
+        const k=document.createElement('div');k.className='white-key';k.dataset.note=n;
+        k.textContent=notes[n%12];
+        k.addEventListener('pointerdown',e=>{e.preventDefault();playNote(n);});
+        k.addEventListener('pointerup',()=>stopNote(n));
+        k.addEventListener('pointerleave',()=>stopNote(n));
+        p.appendChild(k);
+      });
+      const bc=document.createElement('div');bc.className='black-keys';
+      black.forEach((n,i)=>{
+        const k=document.createElement('div');k.className='black-key';k.dataset.note=n;
+        k.style.left=boff[i]+'px';
+        k.addEventListener('pointerdown',e=>{e.preventDefault();playNote(n);});
+        k.addEventListener('pointerup',()=>stopNote(n));
+        k.addEventListener('pointerleave',()=>stopNote(n));
+        bc.appendChild(k);
+      });
+      p.appendChild(bc);
+    }
+    function playNote(n){
+      try{
+        initAudio();const f=261.63*Math.pow(2,n/12);
+        const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+        o.type='triangle';o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(.25,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.4);
+        o.start();o.stop(audioCtx.currentTime+.4);
+        document.querySelectorAll(`[data-note="${n}"]`).forEach(k=>k.classList.add('active'));
+      }catch(e){}
+    }
+    function stopNote(n){document.querySelectorAll(`[data-note="${n}"]`).forEach(k=>k.classList.remove('active'));}
+    function playRef(n){
+      try{
+        initAudio();const f=261.63*Math.pow(2,n/12);
+        const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+        o.type='triangle';o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(.3,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+1.2);
+        o.start();o.stop(audioCtx.currentTime+1.2);
+      }catch(e){}
+    }
+
+    // ===== 日历 =====
+    function renderCalendar(){
+      const now=new Date();
+      const y=calYear??now.getFullYear(), m=calMonth??now.getMonth();
+      calYear=y;calMonth=m;
+      document.getElementById('calTitle').textContent=`${y}年${m+1}月`;
+      const fd=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate(), pdim=new Date(y,m,0).getDate();
+      const cal=document.getElementById('calendar');cal.innerHTML='';
+      ['日','一','二','三','四','五','六'].forEach(d=>{const e=document.createElement('div');e.className='cal-hdr';e.textContent=d;cal.appendChild(e);});
+      for(let i=fd-1;i>=0;i--){const e=document.createElement('div');e.className='cal-day other';e.textContent=pdim-i;cal.appendChild(e);}
+      for(let d=1;d<=dim;d++){
+        const e=document.createElement('div');e.className='cal-day';
+        const ds=new Date(y,m,d).toDateString();
+        if(data[ds]) e.classList.add('practiced');
+        if(d===now.getDate()&&m===now.getMonth()&&y===now.getFullYear()) e.classList.add('today');
+        e.textContent=d;
+        e.onclick=()=>showDayDetail(y,m,d);
+        cal.appendChild(e);
+      }
+    }
+    function chCalMonth(delta){
+      calMonth+=delta;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}
+      renderCalendar();
+    }
+
+    function showDayDetail(y,m,d){
+      const ds=new Date(y,m,d).toDateString();
+      const dayData=data[ds];
+      document.getElementById('dayPopupTitle').textContent=`${y}年${m+1}月${d}日`;
+      const content=document.getElementById('dayPopupContent');
+      if(!dayData){
+        content.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px;">这天还没有练习记录</p>';
+      }else{
+        let html='';
+        if(dayData.review&&dayData.review.length){
+          html+='<p style="font-weight:600;margin-bottom:6px;">🔄 复习</p>';
+          dayData.review.forEach(r=>html+=`<div style="padding:4px 0;font-size:0.85rem;">• ${esc(r.name)} ×${r.count||0}</div>`);
+        }
+        if(dayData.basic&&dayData.basic.length){
+          html+='<p style="font-weight:600;margin:10px 0 6px;">💪 基本功</p>';
+          dayData.basic.forEach(b=>html+=`<div style="padding:4px 0;font-size:0.85rem;">• ${esc(b.name)} ×${b.count||0}</div>`);
+        }
+        if(dayData.pieces&&dayData.pieces.length){
+          html+='<p style="font-weight:600;margin:10px 0 6px;">🎵 乐曲</p>';
+          dayData.pieces.forEach(p=>html+=`<div style="padding:4px 0;font-size:0.85rem;">• ${esc(p.name)} ${p.done?'✓':''}</div>`);
+        }
+        if(dayData.notes){
+          html+='<p style="font-weight:600;margin:10px 0 6px;">📝 笔记</p>';
+          html+=`<div style="font-size:0.82rem;white-space:pre-wrap;color:var(--text-dim);">${esc(dayData.notes)}</div>`;
+        }
+        content.innerHTML=html||'<p style="color:var(--text-dim);text-align:center;padding:20px;">无记录</p>';
+      }
+      document.getElementById('dayOverlay').classList.add('show');
+      document.getElementById('dayPopup').classList.add('show');
+    }
+    function hideDayPopup(){
+      document.getElementById('dayOverlay').classList.remove('show');
+      document.getElementById('dayPopup').classList.remove('show');
+    }
+
+    // ===== 笔记 =====
+    function saveTodayNotes(){
+      const td=ensureToday();
+      td.notes=document.getElementById('todayNotes').value.trim();
+      save();
+      toast('笔记已保存 ✓');
+    }
+
+    // ===== PWA 安装 =====
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt',e=>{
+      e.preventDefault();deferredPrompt=e;
+      document.getElementById('installHint').style.display='block';
+    });
+    function promptInstall(){
+      if(deferredPrompt){
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(()=>{deferredPrompt=null;document.getElementById('installHint').style.display='none';});
+      }
+    }
+    window.addEventListener('appinstalled',()=>{
+      document.getElementById('installHint').style.display='none';
+      toast('已添加到桌面 ✓');
+    });
+
+    // ===== 练习计时 =====
+    setInterval(()=>{
+      const k=todayKey();
+      if(data[k]){ data[k].time=(data[k].time||0)+1; save(); document.getElementById('ovTime').textContent=data[k].time; }
+    },60000);
+
+    // ===== Service Worker =====
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    }
+
+    // ===== 初始化 =====
+    function init(){
+      const now=new Date();
+      document.getElementById('currentDate').textContent=now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+      ensureToday();
+      renderReview();renderBasic();renderPieces();
+      renderCalendar();
+      updateOverview();
+      document.getElementById('todayNotes').value=data[todayKey()]?.notes||'';
+    }
+
+    init();
+  </script>
+</body>
+</html>
