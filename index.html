@@ -306,6 +306,36 @@
     .match-card:active{transform:scale(.95);}
     .match-card.selected{background:var(--accent2);border-color:var(--accent2);}
     .match-card.matched{background:var(--success);color:var(--bg);border-color:var(--success);opacity:0.5;}
+
+    /* 乐理 */
+    .theory-cat{
+      display:flex;align-items:center;gap:10px;padding:10px;
+      background:var(--bg);border:1px solid var(--border);border-radius:10px;
+      cursor:pointer;transition:all .15s;
+    }
+    .theory-cat:active{background:#222244;transform:scale(.97);border-color:var(--accent2);}
+    .theory-block{
+      margin-bottom:16px;
+    }
+    .theory-block h4{
+      font-size:0.85rem;font-weight:600;color:var(--accent);margin-bottom:8px;
+      padding-bottom:6px;border-bottom:1px solid var(--border);
+    }
+    .theory-block p{
+      font-size:0.78rem;color:var(--text-dim);line-height:1.7;margin-bottom:4px;
+    }
+    .theory-block .highlight{
+      background:var(--bg);padding:8px 12px;border-radius:8px;font-size:0.78rem;color:var(--text);
+      margin:8px 0;border-left:3px solid var(--accent);
+    }
+    .theory-table{
+      width:100%;border-collapse:collapse;margin:8px 0;font-size:0.75rem;
+    }
+    .theory-table th,.theory-table td{
+      padding:6px 8px;border:1px solid var(--border);text-align:center;
+    }
+    .theory-table th{background:var(--border);color:var(--text);font-weight:600;}
+    .theory-table td{color:var(--text-dim);}
   </style>
 </head>
 <body>
@@ -487,6 +517,54 @@
         <div id="gameContent"></div>
       </div>
     </div>
+
+    <!-- ===== 乐理页 ===== -->
+    <div class="page" id="page-theory">
+      <div class="card">
+        <div class="card-title"><div class="title-left">📚 乐理知识</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="theory-cat" onclick="showTheory('note')">
+            <span style="font-size:1.4rem;">🎵</span>
+            <div><div style="font-weight:600;font-size:0.85rem;">音符与节拍</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">全音符 · 二分 · 四分 · 八分 · 附点</div></div>
+          </div>
+          <div class="theory-cat" onclick="showTheory('scale')">
+            <span style="font-size:1.4rem;">🎼</span>
+            <div><div style="font-weight:600;font-size:0.85rem;">音阶与调式</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">C大调 · G大调 · F大调 · 小调</div></div>
+          </div>
+          <div class="theory-cat" onclick="showTheory('chord')">
+            <span style="font-size:1.4rem;">🎸</span>
+            <div><div style="font-weight:600;font-size:0.85rem;">和弦基础</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">大三和弦 · 小三和弦 · 转位</div></div>
+          </div>
+          <div class="theory-cat" onclick="showTheory('sign')">
+            <span style="font-size:1.4rem;">🔣</span>
+            <div><div style="font-weight:600;font-size:0.85rem;">常用记号</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">连线 · 跳音 · 强弱 · 踏板</div></div>
+          </div>
+          <div class="theory-cat" onclick="showTheory('finger')">
+            <span style="font-size:1.4rem;">🤚</span>
+            <div><div style="font-weight:600;font-size:0.85rem;">指法与手型</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">指法编号 · 基本手型 · 穿指跨指</div></div>
+          </div>
+          <div class="theory-cat" onclick="showTheory('practice')">
+            <span style="font-size:1.4rem;">💡</span>
+            <div><div style="font-weight:600;font-size:0.85rem;">练习技巧</div>
+            <div style="font-size:0.68rem;color:var(--text-dim);">分手练 · 慢练 · 节拍器 · 分段</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 乐理详情 -->
+      <div class="card" id="theoryDetail" style="display:none;">
+        <div class="card-title">
+          <div class="title-left" id="theoryTitle">📚</div>
+          <button class="btn btn-xs btn-secondary" onclick="hideTheory()">← 返回</button>
+        </div>
+        <div id="theoryContent"></div>
+      </div>
+    </div>
   </div>
 
   <!-- 底部导航 -->
@@ -499,6 +577,9 @@
     </button>
     <button class="nav-item" data-page="games" onclick="switchPage('games')">
       <span class="nav-icon">🎮</span>游戏
+    </button>
+    <button class="nav-item" data-page="theory" onclick="switchPage('theory')">
+      <span class="nav-icon">📚</span>乐理
     </button>
     <button class="nav-item" data-page="calendar" onclick="switchPage('calendar')">
       <span class="nav-icon">📅</span>日历
@@ -814,6 +895,248 @@
     function hideDayPopup(){
       document.getElementById('dayOverlay').classList.remove('show');
       document.getElementById('dayPopup').classList.remove('show');
+    }
+
+    // ===== 乐理知识 =====
+    const theoryData = {
+      note: {
+        title:'🎵 音符与节拍',
+        content:`
+          <div class="theory-block">
+            <h4>常见音符</h4>
+            <table class="theory-table">
+              <tr><th>音符</th><th>名称</th><th>时值（以四分音符=1拍）</th></tr>
+              <tr><td>𝄻</td><td>全音符</td><td>4拍</td></tr>
+              <tr><td>𝄼</td><td>二分音符</td><td>2拍</td></tr>
+              <tr><td>♩</td><td>四分音符</td><td>1拍</td></tr>
+              <tr><td>♪</td><td>八分音符</td><td>1/2拍</td></tr>
+              <tr><td>𝅘𝅥𝅯</td><td>十六分音符</td><td>1/4拍</td></tr>
+            </table>
+          </div>
+          <div class="theory-block">
+            <h4>附点音符</h4>
+            <p>附点延长前面音符时值的<b>一半</b>。例如：</p>
+            <div class="highlight">附点二分音符 = 2拍 + 1拍 = <b>3拍</b></div>
+            <div class="highlight">附点四分音符 = 1拍 + 0.5拍 = <b>1.5拍</b></div>
+          </div>
+          <div class="theory-block">
+            <h4>常用节拍</h4>
+            <table class="theory-table">
+              <tr><th>拍号</th><th>含义</th><th>强弱规律</th></tr>
+              <tr><td>4/4</td><td>每小节4拍，四分音符=1拍</td><td>强 弱 次强 弱</td></tr>
+              <tr><td>3/4</td><td>每小节3拍，四分音符=1拍</td><td>强 弱 弱</td></tr>
+              <tr><td>2/4</td><td>每小节2拍，四分音符=1拍</td><td>强 弱</td></tr>
+              <tr><td>6/8</td><td>每小节6拍，八分音符=1拍</td><td>强 弱 弱 次强 弱 弱</td></tr>
+            </table>
+          </div>
+          <div class="theory-block">
+            <h4>休止符</h4>
+            <p>休止符表示不发音的时间。全休止符 = 4拍休止，二分休止符 = 2拍休止，四分休止符 = 1拍休止。</p>
+          </div>
+        `
+      },
+      scale: {
+        title:'🎼 音阶与调式',
+        content:`
+          <div class="theory-block">
+            <h4>C 大调音阶</h4>
+            <p>C大调是钢琴最基本的音阶，<b>没有升降号</b>：</p>
+            <div class="highlight">C → D → E → F → G → A → B → C<br>（全 全 半 全 全 全 半）</div>
+            <p style="margin-top:8px;">指法（右手）：1-2-3 穿1-2-3-4-5<br>指法（左手）：5-4-3-2-1 跨3-2-1</p>
+          </div>
+          <div class="theory-block">
+            <h4>G 大调音阶（1个升号）</h4>
+            <div class="highlight">G → A → B → C → D → E → F♯ → G<br>升F（♯F）</div>
+          </div>
+          <div class="theory-block">
+            <h4>F 大调音阶（1个降号）</h4>
+            <div class="highlight">F → G → A → B♭ → C → D → E → F<br>降B（♭B）</div>
+          </div>
+          <div class="theory-block">
+            <h4>自然小调</h4>
+            <p>A小调是C大调的<b>关系小调</b>，使用相同的白键：</p>
+            <div class="highlight">A → B → C → D → E → F → G → A<br>（全 半 全 全 半 全 全）</div>
+          </div>
+          <div class="theory-block">
+            <h4>半音与全音</h4>
+            <div class="highlight">半音 = 相邻两个键（含黑键）<br>全音 = 两个半音</div>
+            <p>例如：E→F 是半音（没有黑键在中间），C→D 是全音（中间有C♯）</p>
+          </div>
+        `
+      },
+      chord: {
+        title:'🎸 和弦基础',
+        content:`
+          <div class="theory-block">
+            <h4>三和弦的构成</h4>
+            <p>三和弦由<b>根音 + 三度音 + 五度音</b>叠置而成。</p>
+          </div>
+          <div class="theory-block">
+            <h4>大三和弦</h4>
+            <p>根音到三度 = 大三度（4个半音），三度到五度 = 小三度（3个半音）</p>
+            <table class="theory-table">
+              <tr><th>和弦</th><th>组成音</th><th>键盘位置</th></tr>
+              <tr><td>C</td><td>C - E - G</td><td>do mi sol</td></tr>
+              <tr><td>G</td><td>G - B - D</td><td>sol si re</td></tr>
+              <tr><td>F</td><td>F - A - C</td><td>fa la do</td></tr>
+            </table>
+            <p style="margin-top:6px;font-size:0.72rem;">💡 试试在虚拟钢琴上同时弹 C、E、G！</p>
+          </div>
+          <div class="theory-block">
+            <h4>小三和弦</h4>
+            <p>根音到三度 = 小三度，三度到五度 = 大三度</p>
+            <table class="theory-table">
+              <tr><th>和弦</th><th>组成音</th></tr>
+              <tr><td>Am</td><td>A - C - E</td></tr>
+              <tr><td>Dm</td><td>D - F - A</td></tr>
+              <tr><td>Em</td><td>E - G - B</td></tr>
+            </table>
+          </div>
+          <div class="theory-block">
+            <h4>和弦转位</h4>
+            <div class="highlight">
+              <b>原位</b>：C-E-G（根音在底部）<br>
+              <b>第一转位</b>：E-G-C（三度音在底部）<br>
+              <b>第二转位</b>：G-C-E（五度音在底部）
+            </div>
+            <p>转位让和弦连接更流畅，是拜厄后期学习的重点！</p>
+          </div>
+        `
+      },
+      sign: {
+        title:'🔣 常用记号',
+        content:`
+          <div class="theory-block">
+            <h4>连线（连音线）</h4>
+            <div class="highlight">弧线连接两个<b>相同音高</b>的音 → 只弹第一个，第二个延长<br>弧线连接<b>不同音高</b>的音 → 要弹得连贯（legato）</div>
+          </div>
+          <div class="theory-block">
+            <h4>跳音（staccato）</h4>
+            <p>音符上有一个小圆点，表示<b>短促、跳跃</b>地弹奏。手指触键后快速离键。</p>
+          </div>
+          <div class="theory-block">
+            <h4>力度记号</h4>
+            <table class="theory-table">
+              <tr><th>记号</th><th>意大利文</th><th>含义</th></tr>
+              <tr><td>pp</td><td>pianissimo</td><td>很弱</td></tr>
+              <tr><td>p</td><td>piano</td><td>弱</td></tr>
+              <tr><td>mp</td><td>mezzo-piano</td><td>中弱</td></tr>
+              <tr><td>mf</td><td>mezzo-forte</td><td>中强</td></tr>
+              <tr><td>f</td><td>forte</td><td>强</td></tr>
+              <tr><td>ff</td><td>fortissimo</td><td>很强</td></tr>
+              <tr><td>cresc.</td><td>crescendo</td><td>渐强</td></tr>
+              <tr><td>dim.</td><td>diminuendo</td><td>渐弱</td></tr>
+            </table>
+          </div>
+          <div class="theory-block">
+            <h4>踏板记号</h4>
+            <div class="highlight">Ped. = 踩下延音踏板<br>✱ = 放开踏板</div>
+            <p>初学者先不着急用踏板，先把手指功夫练好！</p>
+          </div>
+          <div class="theory-block">
+            <h4>升降记号</h4>
+            <table class="theory-table">
+              <tr><th>记号</th><th>名称</th><th>含义</th></tr>
+              <tr><td>♯</td><td>升号</td><td>升高半音</td></tr>
+              <tr><td>♭</td><td>降号</td><td>降低半音</td></tr>
+              <tr><td>♮</td><td>还原号</td><td>取消升降</td></tr>
+            </table>
+          </div>
+        `
+      },
+      finger: {
+        title:'🤚 指法与手型',
+        content:`
+          <div class="theory-block">
+            <h4>手指编号</h4>
+            <table class="theory-table">
+              <tr><th>编号</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+              <tr><td>右手</td><td>拇指</td><td>食指</td><td>中指</td><td>无名指</td><td>小指</td></tr>
+              <tr><td>左手</td><td>拇指</td><td>食指</td><td>中指</td><td>无名指</td><td>小指</td></tr>
+            </table>
+            <p style="margin-top:6px;">⚠️ 左右手编号<b>完全相同</b>，拇指永远是1指！</p>
+          </div>
+          <div class="theory-block">
+            <h4>基本手型</h4>
+            <div class="highlight">
+              1. 手指自然弯曲，像握着一个鸡蛋<br>
+              2. 指尖触键（不是指腹！）<br>
+              3. 手腕与手背保持水平<br>
+              4. 手掌不要塌陷<br>
+              5. 1指用侧面触键，其余四指用指尖
+            </div>
+          </div>
+          <div class="theory-block">
+            <h4>穿指（thumb under）</h4>
+            <p>弹音阶上行时，1指从手掌下穿过，接下一个音。例如 C大调右手：<b>1-2-3 穿1-2-3-4-5</b></p>
+          </div>
+          <div class="theory-block">
+            <h4>跨指（cross over）</h4>
+            <p>弹音阶下行时，3指或4指从1指上方跨过。例如 C大调左手：<b>5-4-3-2-1 跨3-2-1</b></p>
+          </div>
+          <div class="theory-block">
+            <h4>常见指法规则</h4>
+            <div class="highlight">
+              • 拇指不弹黑键（初学阶段）<br>
+              • 同一手指不连续弹两个不同键<br>
+              • 五指位置（do到sol）是基础手位<br>
+              • 练习哈农/拜厄来强化指法
+            </div>
+          </div>
+        `
+      },
+      practice: {
+        title:'💡 练习技巧',
+        content:`
+          <div class="theory-block">
+            <h4>分手练习</h4>
+            <p>每首新曲子<b>先分手练</b>，右手练熟再练左手，最后合手。这是最有效的练习方法！</p>
+            <div class="highlight">先右手 ×3遍 → 先左手 ×3遍 → 合手慢速 ×3遍 → 逐渐加速</div>
+          </div>
+          <div class="theory-block">
+            <h4>慢练是王道</h4>
+            <p>用很慢的速度弹奏，确保每个音都<b>准确、均匀</b>。慢练能解决80%的问题。</p>
+            <div class="highlight">如果弹错了，说明还不够慢。慢到<b>不会弹错</b>的速度就是正确的练习速度。</div>
+          </div>
+          <div class="theory-block">
+            <h4>分段练习</h4>
+            <p>不要每次都从头弹到尾！把曲子分成 2-4 小节的段落，<b>逐个攻克</b>难点段落。</p>
+          </div>
+          <div class="theory-block">
+            <h4>使用节拍器</h4>
+            <p>节拍器帮你建立稳定的节奏感。从慢速开始（如 BPM 60-80），逐步提速到目标速度。</p>
+          </div>
+          <div class="theory-block">
+            <h4>每日练习计划建议</h4>
+            <div class="highlight">
+              <b>10分钟</b> 基本功（音阶、哈农、拜厄）<br>
+              <b>10分钟</b> 复习旧曲子<br>
+              <b>10分钟</b> 新曲子学习<br>
+              <b>5分钟</b> 自由弹奏/即兴
+            </div>
+            <p style="margin-top:6px;">每天坚持 30 分钟，比一周练一次 3 小时效果好得多！</p>
+          </div>
+          <div class="theory-block">
+            <h4>常见问题</h4>
+            <p><b>Q: 手指无力怎么办？</b><br>多练高抬指慢练，每个音用手指独立的力量弹下去。</p>
+            <p style="margin-top:6px;"><b>Q: 节奏不稳怎么办？</b><br>打开节拍器，或用手打拍子唱谱。</p>
+            <p style="margin-top:6px;"><b>Q: 弹琴手腕酸？</b><br>检查手型：手腕是否过高或过低？应该自然放平。</p>
+          </div>
+        `
+      }
+    };
+
+    function showTheory(key){
+      const t = theoryData[key];
+      document.getElementById('theoryTitle').textContent = t.title;
+      document.getElementById('theoryContent').innerHTML = t.content;
+      document.getElementById('theoryDetail').style.display = 'block';
+      window.scrollTo(0,0);
+    }
+
+    function hideTheory(){
+      document.getElementById('theoryDetail').style.display = 'none';
+      window.scrollTo(0,0);
     }
 
     // ===== 笔记 =====
