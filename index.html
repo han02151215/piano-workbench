@@ -242,6 +242,58 @@
 
     @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
     .playing .beat-dot.active{animation:pulse .2s;}
+
+    /* 游戏 */
+    .game-tile{
+      display:flex;align-items:center;gap:14px;padding:14px;
+      background:var(--bg);border:1px solid var(--border);border-radius:12px;
+      cursor:pointer;transition:all .15s;
+    }
+    .game-tile:active{background:#222244;transform:scale(.97);border-color:var(--accent2);}
+    .game-score{
+      display:flex;justify-content:space-between;align-items:center;
+      margin-bottom:14px;padding:10px 14px;background:var(--bg);border-radius:10px;
+    }
+    .game-score .score-item{text-align:center;}
+    .game-score .score-val{font-size:1.4rem;font-weight:700;color:var(--accent);}
+    .game-score .score-lbl{font-size:0.68rem;color:var(--text-dim);}
+    .game-btn{
+      padding:14px;border:none;border-radius:12px;font-size:0.95rem;font-weight:600;
+      cursor:pointer;transition:all .12s;font-family:inherit;-webkit-tap-highlight-color:transparent;
+    }
+    .game-btn:active{transform:scale(.94);}
+    .game-btn-primary{background:var(--accent);color:white;width:100%;margin-top:12px;}
+    .game-btn-secondary{background:var(--border);color:var(--text);width:100%;margin-top:8px;}
+    .game-option{
+      padding:14px;border:1px solid var(--border);border-radius:12px;
+      background:var(--bg);color:var(--text);font-size:0.9rem;font-weight:600;
+      cursor:pointer;transition:all .12s;text-align:center;font-family:inherit;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .game-option:active{transform:scale(.95);}
+    .game-option.correct{background:var(--success);color:var(--bg);border-color:var(--success);}
+    .game-option.wrong{background:var(--accent);color:white;border-color:var(--accent);}
+    .game-feedback{
+      text-align:center;padding:10px;border-radius:10px;margin-top:10px;
+      font-size:0.85rem;font-weight:600;
+    }
+    .game-feedback.right{background:rgba(0,217,163,0.15);color:var(--success);}
+    .game-feedback.miss{background:rgba(233,69,96,0.15);color:var(--accent);}
+    .rhythm-dot{
+      width:48px;height:48px;border-radius:50%;background:var(--border);
+      display:inline-flex;align-items:center;justify-content:center;font-size:1.2rem;
+      cursor:pointer;transition:all .08s;margin:0 4px;border:2px solid var(--border);
+    }
+    .rhythm-dot:active,.rhythm-dot.lit{background:var(--accent);border-color:var(--accent);transform:scale(.9);}
+    .match-card{
+      padding:12px;border:1px solid var(--border);border-radius:10px;
+      background:var(--bg);color:var(--text);font-size:0.88rem;font-weight:600;
+      cursor:pointer;transition:all .12s;text-align:center;font-family:inherit;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .match-card:active{transform:scale(.95);}
+    .match-card.selected{background:var(--accent2);border-color:var(--accent2);}
+    .match-card.matched{background:var(--success);color:var(--bg);border-color:var(--success);opacity:0.5;}
   </style>
 </head>
 <body>
@@ -383,6 +435,45 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== 游戏页 ===== -->
+    <div class="page" id="page-games">
+      <!-- 游戏选择 -->
+      <div class="card" id="gameMenu">
+        <div class="card-title"><div class="title-left">🎮 钢琴小游戏</div></div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="game-tile" onclick="startGame('earTrain')">
+            <span style="font-size:1.8rem;">👂</span>
+            <div><div style="font-weight:600;font-size:0.9rem;">听音辨音</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);">听声音，猜是哪个音</div></div>
+          </div>
+          <div class="game-tile" onclick="startGame('noteMatch')">
+            <span style="font-size:1.8rem;">🎯</span>
+            <div><div style="font-weight:600;font-size:0.9rem;">音名连连看</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);">把音名和唱名配对</div></div>
+          </div>
+          <div class="game-tile" onclick="startGame('rhythmTap')">
+            <span style="font-size:1.8rem;">🥁</span>
+            <div><div style="font-weight:600;font-size:0.9rem;">节奏模仿</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);">听节奏，模仿敲出来</div></div>
+          </div>
+          <div class="game-tile" onclick="startGame('highLow')">
+            <span style="font-size:1.8rem;">📈</span>
+            <div><div style="font-weight:600;font-size:0.9rem;">高音低音</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);">判断第二个音是高还是低</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 游戏区域 -->
+      <div class="card" id="gameArea" style="display:none;">
+        <div class="card-title">
+          <div class="title-left" id="gameTitle">🎮 游戏</div>
+          <button class="btn btn-xs btn-secondary" onclick="exitGame()">← 返回</button>
+        </div>
+        <div id="gameContent"></div>
+      </div>
+    </div>
   </div>
 
   <!-- 底部导航 -->
@@ -392,6 +483,9 @@
     </button>
     <button class="nav-item" data-page="piano" onclick="switchPage('piano')">
       <span class="nav-icon">🎹</span>钢琴
+    </button>
+    <button class="nav-item" data-page="games" onclick="switchPage('games')">
+      <span class="nav-icon">🎮</span>游戏
     </button>
     <button class="nav-item" data-page="calendar" onclick="switchPage('calendar')">
       <span class="nav-icon">📅</span>日历
@@ -733,6 +827,256 @@
       document.getElementById('installHint').style.display='none';
       toast('已添加到桌面 ✓');
     });
+
+    // ===== 钢琴小游戏 =====
+    const noteNames = [
+      {idx:0, name:'C', solfege:'Do', freq:261.63},
+      {idx:2, name:'D', solfege:'Re', freq:293.66},
+      {idx:4, name:'E', solfege:'Mi', freq:329.63},
+      {idx:5, name:'F', solfege:'Fa', freq:349.23},
+      {idx:7, name:'G', solfege:'Sol', freq:392.00},
+      {idx:9, name:'A', solfege:'La', freq:440.00},
+      {idx:11, name:'B', solfege:'Si', freq:493.88},
+      {idx:12, name:'C\'', solfege:'Do\'', freq:523.25},
+    ];
+
+    let gameState = {game:null, score:0, round:0, correct:0, total:0, question:null, answered:false};
+
+    function startGame(g){
+      gameState = {game:g, score:0, round:0, correct:0, total:0, question:null, answered:false};
+      document.getElementById('gameMenu').style.display='none';
+      document.getElementById('gameArea').style.display='block';
+      const titles = {earTrain:'👂 听音辨音', noteMatch:'🎯 音名连连看', rhythmTap:'🥁 节奏模仿', highLow:'📈 高音低音'};
+      document.getElementById('gameTitle').textContent = titles[g];
+      if(g==='earTrain') earTrainNext();
+      else if(g==='noteMatch') noteMatchInit();
+      else if(g==='rhythmTap') rhythmTapNext();
+      else if(g==='highLow') highLowNext();
+    }
+
+    function exitGame(){
+      document.getElementById('gameMenu').style.display='block';
+      document.getElementById('gameArea').style.display='none';
+      gameState.game = null;
+    }
+
+    function playTone(freq, duration){
+      try{
+        initAudio();
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type='triangle'; o.frequency.value=freq;
+        o.connect(g); g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+duration);
+        o.start(); o.stop(audioCtx.currentTime+duration);
+      }catch(e){}
+    }
+
+    function renderScore(){
+      return `
+        <div class="game-score">
+          <div class="score-item"><div class="score-val" id="gScore">${gameState.score}</div><div class="score-lbl">得分</div></div>
+          <div class="score-item"><div class="score-val" id="gRound">${gameState.round}</div><div class="score-lbl">第N轮</div></div>
+          <div class="score-item"><div class="score-val" id="gAcc">${gameState.total?Math.round(gameState.correct/gameState.total*100):0}%</div><div class="score-lbl">正确率</div></div>
+        </div>`;
+    }
+
+    function updateScore(){
+      const s=document.getElementById('gScore'); if(s) s.textContent=gameState.score;
+      const r=document.getElementById('gRound'); if(r) r.textContent=gameState.round;
+      const a=document.getElementById('gAcc'); if(a) a.textContent=gameState.total?Math.round(gameState.correct/gameState.total*100)+'%':'0%';
+    }
+
+    function shuffle(arr){ return arr.slice().sort(()=>Math.random()-0.5); }
+
+    // --- 游戏1：听音辨音 ---
+    function earTrainNext(){
+      gameState.round++; gameState.answered=false;
+      const target = noteNames[Math.floor(Math.random()*noteNames.length)];
+      gameState.question = target;
+      const options = shuffle([target, ...shuffle(noteNames.filter(n=>n.idx!==target.idx)).slice(0,3)]);
+      gameState.options = options;
+      document.getElementById('gameContent').innerHTML = renderScore() + `
+        <p style="text-align:center;font-size:0.88rem;margin-bottom:14px;color:var(--text-dim);">听声音，选出这个音</p>
+        <button class="game-btn game-btn-primary" onclick="earTrainPlay()" style="margin-top:0;margin-bottom:16px;">🔊 播放音</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${options.map((o,i)=>`<div class="game-option" onclick="earTrainAnswer(${i})">${o.name} (${o.solfege})</div>`).join('')}
+        </div>
+        <div id="gameFeedback"></div>
+        <button class="game-btn game-btn-secondary" id="nextBtn" style="display:none;" onclick="earTrainNext()">下一题 →</button>
+      `;
+      setTimeout(()=>earTrainPlay(), 300);
+    }
+    function earTrainPlay(){ playTone(gameState.question.freq, 0.8); }
+    function earTrainAnswer(i){
+      if(gameState.answered) return;
+      gameState.answered=true; gameState.total++;
+      const opts=document.querySelectorAll('#gameContent .game-option');
+      const correct = gameState.options[i].idx===gameState.question.idx;
+      if(correct){ gameState.correct++; gameState.score+=10; opts[i].classList.add('correct'); }
+      else{ opts[i].classList.add('wrong'); opts[gameState.options.indexOf(gameState.question)].classList.add('correct'); }
+      updateScore();
+      document.getElementById('gameFeedback').innerHTML = `<div class="game-feedback ${correct?'right':'miss'}">${correct?'✓ 正确！+10':'✗ 正确答案：'+gameState.question.name+' ('+gameState.question.solfege+')'}</div>`;
+      document.getElementById('nextBtn').style.display='block';
+    }
+
+    // --- 游戏2：音名连连看 ---
+    function noteMatchInit(){ noteMatchNext(); }
+    function noteMatchNext(){
+      gameState.round++; gameState.answered=false;
+      const picked = shuffle(noteNames).slice(0,4);
+      gameState.question = {left:picked, right:shuffle(picked), selectedL:null, selectedR:null, matches:{}};
+      document.getElementById('gameContent').innerHTML = renderScore() + `
+        <p style="text-align:center;font-size:0.88rem;margin-bottom:14px;color:var(--text-dim);">将音名和唱名配对（点击左边再点右边）</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div style="font-size:0.72rem;color:var(--text-dim);text-align:center;">音名</div>
+          <div style="font-size:0.72rem;color:var(--text-dim);text-align:center;">唱名</div>
+        </div>
+        <div id="matchGrid"></div>
+        <div id="gameFeedback"></div>
+      `;
+      renderMatchGrid();
+    }
+    function renderMatchGrid(){
+      const q=gameState.question;
+      let html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+      q.left.forEach((n,i)=>{
+        const matched=q.matches['l'+i]!==undefined;
+        const sel=q.selectedL===i;
+        html+=`<div class="match-card ${sel?'selected':''} ${matched?'matched':''}" onclick="matchClick('l',${i})">${n.name}</div>`;
+        const rn=q.right[i];
+        const matchedR=q.matches['r'+i]!==undefined;
+        const selR=q.selectedR===i;
+        html+=`<div class="match-card ${selR?'selected':''} ${matchedR?'matched':''}" onclick="matchClick('r',${i})">${rn.solfege}</div>`;
+      });
+      html+='</div>';
+      document.getElementById('matchGrid').innerHTML=html;
+    }
+    function matchClick(side, i){
+      const q=gameState.question;
+      if(Object.keys(q.matches).length>=4) return;
+      if(side==='l'){ q.selectedL=i; if(q.selectedR!==null) tryMatch(); }
+      else{ q.selectedR=i; if(q.selectedL!==null) tryMatch(); }
+      renderMatchGrid();
+    }
+    function tryMatch(){
+      const q=gameState.question;
+      const lNote=q.left[q.selectedL], rNote=q.right[q.selectedR];
+      if(lNote.idx===rNote.idx){
+        q.matches['l'+q.selectedL]=q.selectedR; q.matches['r'+q.selectedR]=q.selectedL;
+        q.selectedL=null; q.selectedR=null;
+        gameState.score+=10;
+        playTone(lNote.freq,0.4);
+        if(Object.keys(q.matches).length>=4){
+          gameState.correct++; gameState.total++;
+          updateScore();
+          document.getElementById('gameFeedback').innerHTML='<div class="game-feedback right">🎉 全部配对成功！+40</div>';
+          gameState.score+=30;
+          setTimeout(()=>{updateScore(); noteMatchNext();},1500);
+        }
+      } else {
+        gameState.total++;
+        document.getElementById('gameFeedback').innerHTML='<div class="game-feedback miss">✗ 不匹配，再试试</div>';
+        q.selectedL=null; q.selectedR=null;
+        setTimeout(()=>{renderMatchGrid(); document.getElementById('gameFeedback').innerHTML='';},800);
+      }
+      updateScore();
+    }
+
+    // --- 游戏3：节奏模仿 ---
+    function rhythmTapNext(){
+      gameState.round++; gameState.answered=false;
+      const len = 3+Math.min(Math.floor(gameState.round/3),3);
+      const pattern = [];
+      for(let i=0;i<len;i++) pattern.push(Math.random()>0.4?1:0);
+      gameState.question = {pattern, userIdx:0, userPattern:[]};
+      document.getElementById('gameContent').innerHTML = renderScore() + `
+        <p style="text-align:center;font-size:0.88rem;margin-bottom:10px;color:var(--text-dim);">听节奏，然后模仿敲出来</p>
+        <div id="rhythmPattern" style="text-align:center;margin-bottom:14px;"></div>
+        <button class="game-btn game-btn-primary" onclick="rhythmPlay()" style="margin-top:0;margin-bottom:14px;">🔊 听节奏</button>
+        <div style="text-align:center;margin-bottom:10px;">
+          <div id="rhythmDots" style="display:flex;justify-content:center;flex-wrap:wrap;"></div>
+        </div>
+        <p style="text-align:center;font-size:0.75rem;color:var(--text-dim);" id="rhythmHint">先听节奏，再点击圆点模仿</p>
+        <div id="gameFeedback"></div>
+        <button class="game-btn game-btn-secondary" id="nextBtn" style="display:none;" onclick="rhythmTapNext()">下一题 →</button>
+      `;
+      renderRhythmDots();
+      setTimeout(()=>rhythmPlay(),300);
+    }
+    function renderRhythmDots(){
+      const q=gameState.question;
+      document.getElementById('rhythmDots').innerHTML = q.pattern.map((p,i)=>
+        `<div class="rhythm-dot" onclick="rhythmTap(${i})">${i+1}</div>`
+      ).join('');
+      document.getElementById('rhythmPattern').innerHTML = q.pattern.map((p,i)=>
+        `<span style="display:inline-block;width:28px;height:28px;border-radius:50%;margin:0 3px;background:${p?'var(--accent)':'var(--border)'};"></span>`
+      ).join('');
+    }
+    function rhythmPlay(){
+      const q=gameState.question;
+      let t=0;
+      q.pattern.forEach((p,i)=>{
+        if(p){ setTimeout(()=>playTone(440,0.15), t); }
+        t += 500;
+      });
+    }
+    function rhythmTap(i){
+      const q=gameState.question;
+      if(gameState.answered) return;
+      if(i!==q.userIdx) return;
+      playTone(440,0.15);
+      document.querySelectorAll('#rhythmDots .rhythm-dot')[i].classList.add('lit');
+      q.userPattern.push(q.pattern[i]);
+      q.userIdx++;
+      if(q.userIdx>=q.pattern.length){
+        gameState.answered=true; gameState.total++;
+        const correct = q.userPattern.every((v,i)=>v===q.pattern[i]);
+        if(correct){ gameState.correct++; gameState.score+=20; }
+        updateScore();
+        document.getElementById('gameFeedback').innerHTML=`<div class="game-feedback ${correct?'right':'miss'}">${correct?'✓ 完美！+20':'✗ 节奏不对，再听听'}</div>`;
+        document.getElementById('nextBtn').style.display='block';
+      }
+    }
+
+    // --- 游戏4：高音低音 ---
+    function highLowNext(){
+      gameState.round++; gameState.answered=false;
+      const n1=noteNames[Math.floor(Math.random()*7)];
+      let n2;
+      do{ n2=noteNames[Math.floor(Math.random()*7)]; }while(n2.idx===n1.idx);
+      gameState.question={n1,n2,higher:n2.freq>n1.freq};
+      document.getElementById('gameContent').innerHTML=renderScore()+`
+        <p style="text-align:center;font-size:0.88rem;margin-bottom:14px;color:var(--text-dim);">听两个音，第二个比第一个高还是低？</p>
+        <button class="game-btn game-btn-primary" onclick="highLowPlay()" style="margin-top:0;margin-bottom:16px;">🔊 播放两个音</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="game-option" onclick="highLowAnswer(true)">⬆️ 更高</div>
+          <div class="game-option" onclick="highLowAnswer(false)">⬇️ 更低</div>
+        </div>
+        <div id="gameFeedback"></div>
+        <button class="game-btn game-btn-secondary" id="nextBtn" style="display:none;" onclick="highLowNext()">下一题 →</button>
+      `;
+      setTimeout(()=>highLowPlay(),300);
+    }
+    function highLowPlay(){
+      playTone(gameState.question.n1.freq,0.6);
+      setTimeout(()=>playTone(gameState.question.n2.freq,0.6),800);
+    }
+    function highLowAnswer(higher){
+      if(gameState.answered) return;
+      gameState.answered=true; gameState.total++;
+      const correct=higher===gameState.question.higher;
+      const opts=document.querySelectorAll('#gameContent .game-option');
+      if(correct){ gameState.correct++; gameState.score+=10;
+        opts[higher?0:1].classList.add('correct');
+      } else {
+        opts[higher?0:1].classList.add('wrong');
+        opts[gameState.question.higher?0:1].classList.add('correct');
+      }
+      updateScore();
+      document.getElementById('gameFeedback').innerHTML=`<div class="game-feedback ${correct?'right':'miss'}">${correct?'✓ 正确！+10':'✗ '+gameState.question.n1.name+'→'+gameState.question.n2.name+(gameState.question.higher?' (升高)':' (降低)')}</div>`;
+      document.getElementById('nextBtn').style.display='block';
+    }
 
     // ===== Service Worker =====
     if('serviceWorker' in navigator){
