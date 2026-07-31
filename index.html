@@ -336,6 +336,17 @@
     }
     .theory-table th{background:var(--border);color:var(--text);font-weight:600;}
     .theory-table td{color:var(--text-dim);}
+
+    /* 测验 */
+    .quiz-option{
+      padding:12px;border:1.5px solid var(--border);border-radius:10px;
+      background:var(--bg);color:var(--text);font-size:0.85rem;
+      cursor:pointer;transition:all .12s;text-align:center;font-family:inherit;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .quiz-option:active{transform:scale(.97);}
+    .quiz-option.correct{background:var(--success);color:var(--bg);border-color:var(--success);}
+    .quiz-option.wrong{background:var(--accent);color:white;border-color:var(--accent);}
   </style>
 </head>
 <body>
@@ -564,6 +575,9 @@
         </div>
         <div id="theoryContent"></div>
       </div>
+
+      <!-- 测验卡片 -->
+      <div class="card" id="quizCard" style="display:none;"></div>
     </div>
   </div>
 
@@ -1129,13 +1143,144 @@
     function showTheory(key){
       const t = theoryData[key];
       document.getElementById('theoryTitle').textContent = t.title;
-      document.getElementById('theoryContent').innerHTML = t.content;
+      let html = t.content;
+      html += `<div style="margin-top:16px;text-align:center;border-top:1px solid var(--border);padding-top:14px;">
+        <p style="font-size:0.75rem;color:var(--text-dim);margin-bottom:8px;">学会了吗？来测试一下</p>
+        <button class="btn btn-sm btn-primary" onclick="startQuiz('${key}')">🧠 开始测验</button>
+      </div>`;
+      document.getElementById('theoryContent').innerHTML = html;
       document.getElementById('theoryDetail').style.display = 'block';
       window.scrollTo(0,0);
     }
 
     function hideTheory(){
       document.getElementById('theoryDetail').style.display = 'none';
+      document.getElementById('quizCard').style.display = 'none';
+      window.scrollTo(0,0);
+    }
+
+    // ===== 乐理测验 =====
+    const quizData = {
+      note: [
+        {q:'四分音符是几拍？', opts:['1拍','2拍','1/2拍','4拍'], a:0},
+        {q:'附点二分音符等于几拍？', opts:['2拍','3拍','4拍','1.5拍'], a:1},
+        {q:'4/4拍的强弱规律是？', opts:['强 弱 弱 弱','强 弱 强 弱','强 弱 次强 弱','强 强 弱 弱'], a:2},
+        {q:'八分音符的时值是？', opts:['1拍','2拍','1/2拍','1/4拍'], a:2},
+        {q:'全休止符休止几拍？', opts:['1拍','2拍','4拍','8拍'], a:2},
+      ],
+      scale: [
+        {q:'C大调有几个升降号？', opts:['1个升号','1个降号','没有升降号','2个升号'], a:2},
+        {q:'G大调的升号是什么？', opts:['升C','升F','升G','升D'], a:1},
+        {q:'E到F之间是？', opts:['全音','半音','小三度','大三度'], a:1},
+        {q:'A小调是哪个大调的关系小调？', opts:['G大调','F大调','C大调','D大调'], a:2},
+        {q:'全音等于几个半音？', opts:['1个','2个','3个','4个'], a:1},
+      ],
+      chord: [
+        {q:'C大三和弦由哪三个音组成？', opts:['C-D-E','C-E-G','C-F-A','C-E-A'], a:1},
+        {q:'三和弦由几个音叠置？', opts:['2个','3个','4个','5个'], a:1},
+        {q:'第一转位中，哪个音在底部？', opts:['根音','三度音','五度音','八度音'], a:1},
+        {q:'Am是哪种和弦？', opts:['大三和弦','小三和弦','增三和弦','减三和弦'], a:1},
+        {q:'F大三和弦的组成音是？', opts:['F-A-C','F-G-A','F-A-D','F-B-C'], a:0},
+      ],
+      sign: [
+        {q:'♯ 是什么记号？', opts:['降号','升号','还原号','重升号'], a:1},
+        {q:'f（forte）表示？', opts:['很弱','弱','强','很强'], a:2},
+        {q:'cresc. 表示什么？', opts:['渐弱','渐强','突强','很弱'], a:1},
+        {q:'跳音（staccato）怎么弹？', opts:['连贯地','短促跳跃','很强','很弱'], a:1},
+        {q:'Ped. 是什么记号？', opts:['力度记号','速度记号','踏板记号','指法记号'], a:2},
+      ],
+      finger: [
+        {q:'右手拇指是几号指？', opts:['5号','1号','2号','3号'], a:1},
+        {q:'穿指时用哪个手指从掌下穿过？', opts:['2指','3指','1指','4指'], a:2},
+        {q:'基本手型要求手腕怎样？', opts:['尽量抬高','尽量压低','与手背水平','无所谓'], a:2},
+        {q:'跨指时哪个手指跨过拇指上方？', opts:['1指','2指','3指或4指','5指'], a:2},
+        {q:'初学者拇指应该避免弹什么？', opts:['白键','黑键','中间区域','低音区'], a:1},
+      ],
+      practice: [
+        {q:'最有效的练习方法是？', opts:['从头到尾反复弹','先分手再合手','只练右手','只练左手'], a:1},
+        {q:'慢练的正确速度是？', opts:['越快越好','不会弹错的速度','比原速慢一点就行','随便'], a:1},
+        {q:'建议每天练多久？', opts:['10分钟','3小时','30分钟左右','1小时'], a:2},
+        {q:'分段练习中，每段建议多长？', opts:['一整页','2-4小节','一行','整首曲子'], a:1},
+        {q:'节奏不稳时应该？', opts:['加速弹','用节拍器或打拍子','跳过这段','换个曲子'], a:1},
+      ]
+    };
+
+    let quizState = {questions:[], idx:0, score:0, total:0, answered:false};
+
+    function startQuiz(key){
+      quizState = {questions:quizData[key]||[], idx:0, score:0, total:0, answered:false};
+      renderQuizQuestion();
+      document.getElementById('quizCard').style.display = 'block';
+      document.getElementById('theoryDetail').style.display = 'none';
+      window.scrollTo(0,0);
+    }
+
+    function renderQuizQuestion(){
+      const q = quizState.questions[quizState.idx];
+      if(!q) { renderQuizResult(); return; }
+      quizState.answered = false;
+      const quizCard = document.getElementById('quizCard');
+      quizCard.innerHTML = `
+        <div class="card-title"><div class="title-left">🧠 乐理测验</div><span style="font-size:0.7rem;color:var(--text-dim);">${quizState.idx+1}/${quizState.questions.length}</span></div>
+        <p style="font-size:0.88rem;font-weight:600;margin-bottom:14px;line-height:1.5;">${quizState.idx+1}. ${q.q}</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${q.opts.map((o,i)=>`<div class="quiz-option" onclick="answerQuiz(${i})">${o}</div>`).join('')}
+        </div>
+        <div id="quizFeedback" style="margin-top:10px;"></div>
+        <button class="game-btn game-btn-secondary" id="quizNextBtn" style="display:none;" onclick="nextQuiz()">下一题 →</button>
+      `;
+    }
+
+    function answerQuiz(i){
+      if(quizState.answered) return;
+      quizState.answered = true;
+      quizState.total++;
+      const q = quizState.questions[quizState.idx];
+      const correct = i === q.a;
+      if(correct) quizState.score += 20;
+      const opts = document.querySelectorAll('#quizCard .quiz-option');
+      opts.forEach((o,idx)=>{
+        if(idx===q.a) o.classList.add('correct');
+        else if(idx===i && !correct) o.classList.add('wrong');
+      });
+      document.getElementById('quizFeedback').innerHTML = `<div class="game-feedback ${correct?'right':'miss'}">${correct?'✓ 正确！+20':'✗ 正确答案：'+q.opts[q.a]}</div>`;
+      document.getElementById('quizNextBtn').style.display='block';
+    }
+
+    function nextQuiz(){
+      quizState.idx++;
+      if(quizState.idx >= quizState.questions.length){
+        renderQuizResult();
+      } else {
+        renderQuizQuestion();
+      }
+    }
+
+    function renderQuizResult(){
+      const total = quizState.total;
+      const score = quizState.score;
+      const max = quizState.questions.length * 20;
+      const pct = Math.round(score/max*100);
+      let emoji = pct>=80?'🏆':pct>=60?'👍':'📖';
+      let msg = pct>=80?'太棒了！你已经掌握了！':pct>=60?'不错哦，继续加油！':'多看看乐理知识，再来挑战！';
+      const quizCard = document.getElementById('quizCard');
+      quizCard.innerHTML = `
+        <div class="card-title"><div class="title-left">🧠 测验结果</div></div>
+        <div style="text-align:center;padding:16px 0;">
+          <div style="font-size:3rem;">${emoji}</div>
+          <div style="font-size:2rem;font-weight:700;color:var(--accent);">${score}/${max}</div>
+          <div style="font-size:1rem;font-weight:600;margin:8px 0;">正确率 ${pct}%</div>
+          <p style="font-size:0.8rem;color:var(--text-dim);">${msg}</p>
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;">
+            <button class="game-btn game-btn-primary" onclick="startQuiz('${quizState.questions.length>0?'':'note'}')">🔄 再做一次</button>
+            <button class="game-btn game-btn-secondary" onclick="hideQuiz()">← 返回乐理</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function hideQuiz(){
+      document.getElementById('quizCard').style.display = 'none';
       window.scrollTo(0,0);
     }
 
