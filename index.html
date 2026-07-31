@@ -264,7 +264,7 @@
         <div class="stat-card" onclick="switchPage('practice')">
           <div class="icon">🎵</div><div class="value" id="ovPiece">0</div><div class="label">乐曲</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" onclick="switchPage('practice');document.getElementById('timeInput').focus();">
           <div class="icon">⏱️</div><div class="value" id="ovTime">0</div><div class="label">分钟</div>
         </div>
         <div class="stat-card" onclick="switchPage('calendar')">
@@ -275,31 +275,22 @@
 
     <!-- ===== 练习页 ===== -->
     <div class="page active" id="page-practice">
-      <!-- 节拍器 -->
+      <!-- ⏱️ 今日练习时间 -->
       <div class="card">
-        <div class="card-title"><div class="title-left">🥁 节拍器</div></div>
-        <div class="metro-main">
-          <div><div class="bpm-value" id="bpmValue">100</div><div class="bpm-label">BPM</div></div>
-          <button class="btn-play" id="metroBtn" onclick="toggleMetro()">▶</button>
-          <div class="beat-dots" id="beatDots">
-            <div class="beat-dot" data-b="1"></div><div class="beat-dot" data-b="2"></div>
-            <div class="beat-dot" data-b="3"></div><div class="beat-dot" data-b="4"></div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button class="btn btn-sm btn-secondary" onclick="chBpm(-5)">−</button>
-          <input type="range" id="bpmSlider" min="40" max="208" value="100" oninput="setBpm(this.value)">
-          <button class="btn btn-sm btn-secondary" onclick="chBpm(5)">+</button>
+        <div class="card-title"><div class="title-left">⏱️ 今日练习时间</div></div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="number" id="timeInput" min="0" max="999" value="0"
+            style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:1.1rem;font-weight:700;outline:none;-webkit-user-select:text;user-select:text;text-align:center;"
+            oninput="onTimeInput(this.value)">
+          <span style="font-size:0.9rem;color:var(--text-dim);">分钟</span>
+          <button class="btn btn-sm btn-primary" onclick="saveTime()">💾 保存</button>
         </div>
         <div class="tag-row">
-          <button class="tag" onclick="presetBpm(60)">60</button>
-          <button class="tag" onclick="presetBpm(80)">80</button>
-          <button class="tag active" onclick="presetBpm(100)">100</button>
-          <button class="tag" onclick="presetBpm(120)">120</button>
-          <button class="tag" onclick="presetBpm(144)">144</button>
-          <select style="margin-left:auto;padding:5px 8px;border-radius:16px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:0.72rem;font-family:inherit;" id="timeSig" onchange="chTimeSig()">
-            <option value="4">4/4</option><option value="3">3/4</option><option value="2">2/4</option><option value="6">6/8</option>
-          </select>
+          <button class="tag" onclick="addTime(15)">+15</button>
+          <button class="tag" onclick="addTime(30)">+30</button>
+          <button class="tag" onclick="addTime(45)">+45</button>
+          <button class="tag" onclick="addTime(60)">+60</button>
+          <button class="tag" onclick="setTime(0)" style="margin-left:auto;color:var(--accent);">归零</button>
         </div>
       </div>
 
@@ -571,67 +562,43 @@
       return s;
     }
 
-    // ===== 节拍器 =====
-    let metroInt=null, curBeat=0, audioCtx=null;
+    // ===== 练习时间编辑 =====
+    function onTimeInput(v){
+      const td = ensureToday();
+      td.time = Math.max(0, parseInt(v)||0);
+      document.getElementById('ovTime').textContent = td.time;
+      save();
+    }
+    function addTime(min){
+      const td = ensureToday();
+      td.time = (td.time||0) + min;
+      save();
+      document.getElementById('timeInput').value = td.time;
+      document.getElementById('ovTime').textContent = td.time;
+      toast('+' + min + '分钟 ✓');
+    }
+    function setTime(v){
+      const td = ensureToday();
+      td.time = Math.max(0, parseInt(v)||0);
+      save();
+      document.getElementById('timeInput').value = td.time;
+      document.getElementById('ovTime').textContent = td.time;
+    }
+    function saveTime(){
+      save();
+      toast('已保存 ✓');
+    }
+    function syncTimeInput(){
+      const td = ensureToday();
+      document.getElementById('timeInput').value = td.time||0;
+    }
+
+    // ===== 钢琴 =====
+    let audioCtx=null;
     function initAudio(){
       if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
       if(audioCtx.state==='suspended') audioCtx.resume();
     }
-    function click(accent){
-      try{
-        initAudio();
-        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-        o.connect(g);g.connect(audioCtx.destination);
-        o.frequency.value=accent?1000:800;o.type='sine';
-        g.gain.setValueAtTime(accent?.4:.25,audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.08);
-        o.start();o.stop(audioCtx.currentTime+.08);
-      }catch(e){}
-    }
-    function toggleMetro(){
-      const btn=document.getElementById('metroBtn');
-      if(metroInt){
-        clearInterval(metroInt);metroInt=null;
-        btn.textContent='▶';btn.classList.remove('playing');
-        document.querySelector('.metro-main').classList.remove('playing');
-      }else{
-        initAudio();
-        const bpm=parseInt(document.getElementById('bpmSlider').value);
-        const beats=parseInt(document.getElementById('timeSig').value);
-        curBeat=0;
-        metroInt=setInterval(()=>{
-          curBeat=(curBeat%beats)+1;
-          document.querySelectorAll('.beat-dot').forEach((d,i)=>{
-            d.classList.remove('active','accent');
-            if(i+1===curBeat){d.classList.add('active');if(curBeat===1)d.classList.add('accent');}
-          });
-          click(curBeat===1);
-        },60000/bpm);
-        btn.textContent='⏸';btn.classList.add('playing');
-        document.querySelector('.metro-main').classList.add('playing');
-      }
-    }
-    function setBpm(v){
-      document.getElementById('bpmValue').textContent=v;
-      if(metroInt){toggleMetro();toggleMetro();}
-    }
-    function presetBpm(v){
-      document.getElementById('bpmSlider').value=v;setBpm(v);
-      document.querySelectorAll('.metro-main .tag').forEach(t=>t.classList.remove('active'));
-      event.target.classList.add('active');
-    }
-    function chBpm(d){
-      const s=document.getElementById('bpmSlider');
-      s.value=Math.max(40,Math.min(208,parseInt(s.value)+d));setBpm(s.value);
-    }
-    function chTimeSig(){
-      const beats=parseInt(document.getElementById('timeSig').value);
-      const dots=document.getElementById('beatDots');dots.innerHTML='';
-      for(let i=1;i<=beats;i++){const d=document.createElement('div');d.className='beat-dot';d.dataset.b=i;dots.appendChild(d);}
-      if(metroInt){toggleMetro();toggleMetro();}
-    }
-
-    // ===== 钢琴 =====
     const notes=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
     function renderPiano(){
       const p=document.getElementById('piano');p.innerHTML='';
@@ -712,6 +679,10 @@
         content.innerHTML='<p style="color:var(--text-dim);text-align:center;padding:20px;">这天还没有练习记录</p>';
       }else{
         let html='';
+        if(dayData.time){
+          html+=`<p style="font-weight:600;margin-bottom:6px;">⏱️ 练习时间</p>`;
+          html+=`<div style="padding:4px 0;font-size:0.85rem;">${dayData.time} 分钟</div>`;
+        }
         if(dayData.review&&dayData.review.length){
           html+='<p style="font-weight:600;margin-bottom:6px;">🔄 复习</p>';
           dayData.review.forEach(r=>html+=`<div style="padding:4px 0;font-size:0.85rem;">• ${esc(r.name)} ×${r.count||0}</div>`);
@@ -763,12 +734,6 @@
       toast('已添加到桌面 ✓');
     });
 
-    // ===== 练习计时 =====
-    setInterval(()=>{
-      const k=todayKey();
-      if(data[k]){ data[k].time=(data[k].time||0)+1; save(); document.getElementById('ovTime').textContent=data[k].time; }
-    },60000);
-
     // ===== Service Worker =====
     if('serviceWorker' in navigator){
       navigator.serviceWorker.register('sw.js').catch(()=>{});
@@ -782,6 +747,7 @@
       renderReview();renderBasic();renderPieces();
       renderCalendar();
       updateOverview();
+      syncTimeInput();
       document.getElementById('todayNotes').value=data[todayKey()]?.notes||'';
     }
 
