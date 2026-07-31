@@ -41,19 +41,21 @@
     .app{max-width:375px;margin:0 auto;padding:0 14px;}
 
     header{
-      position:relative;z-index:100;
-      background:var(--bg);
-      padding-top:50px;
+      position:sticky;top:0;z-index:100;
+      background:rgba(15,15,26,0.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+      padding-top:10px;
       padding-bottom:10px;
       text-align:center;margin:0 -14px;padding-left:14px;padding-right:14px;
     }
-    header h1{font-size:1rem;font-weight:700;letter-spacing:1px;line-height:1.3;}
+    header h1{font-size:1.1rem;font-weight:700;letter-spacing:1px;line-height:1.3;}
     header h1 span{color:var(--accent);}
-    header .date{color:var(--text-dim);font-size:0.68rem;margin-top:2px;}
+    header .date{color:var(--text-dim);font-size:0.7rem;margin-top:2px;}
     header .install-hint{
       color:var(--accent);font-size:0.7rem;margin-top:4px;cursor:pointer;
       text-decoration:underline;text-underline-offset:2px;
     }
+    /* 灵动岛占位 */
+    .notch-spacer{height:60px;background:var(--bg);margin:0 -14px;}
 
     .overview-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:10px -14px;padding:0 14px;}
     .overview-scroll::-webkit-scrollbar{display:none;}
@@ -308,6 +310,7 @@
 </head>
 <body>
   <div class="app">
+    <div class="notch-spacer"></div>
     <header>
       <h1>🎹 <span>钢琴</span>学习工作台</h1>
       <div class="date" id="currentDate"></div>
