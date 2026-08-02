@@ -151,6 +151,41 @@
     .add-row input:focus{border-color:var(--accent2);border-style:solid;}
     .add-row input::placeholder{color:var(--text-dim);}
 
+    /* 练习统计 */
+    .stat-box{
+      background:var(--bg);border-radius:10px;padding:10px 4px;text-align:center;
+    }
+    .stat-val{
+      font-size:1.25rem;font-weight:700;color:var(--accent);line-height:1;
+    }
+    .stat-val .stat-unit{
+      font-size:0.55rem;color:var(--text-dim);font-weight:500;margin-left:1px;
+    }
+    .stat-lbl{font-size:0.6rem;color:var(--text-dim);margin-top:3px;}
+    .month-chart{
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .month-row{
+      display:flex;align-items:center;gap:8px;font-size:0.7rem;
+    }
+    .month-label{
+      width:36px;color:var(--text-dim);font-weight:500;flex-shrink:0;
+    }
+    .month-label .month-year{
+      display:block;font-size:0.55rem;opacity:0.7;
+    }
+    .month-bar{
+      flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden;
+      position:relative;
+    }
+    .month-bar-fill{
+      height:100%;border-radius:6px;background:var(--accent);transition:width .5s;
+      min-width:2%;
+    }
+    .month-val{
+      width:54px;text-align:right;font-weight:600;color:var(--text);
+    }
+
     /* 节拍器 */
     .metro-main{
       display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:14px;
@@ -398,6 +433,31 @@
           <button class="tag" onclick="addTime(60)">+60</button>
           <button class="tag" onclick="setTime(0)" style="margin-left:auto;color:var(--accent);">归零</button>
         </div>
+      </div>
+
+      <!-- 📊 练习统计 -->
+      <div class="card">
+        <div class="card-title"><div class="title-left">📊 练习统计</div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+          <div class="stat-box">
+            <div class="stat-val" id="statStreak">0</div>
+            <div class="stat-lbl">坚持天数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="statDailyAvg">0<span class="stat-unit">分</span></div>
+            <div class="stat-lbl">平均每天</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="statWeekTotal">0<span class="stat-unit">分</span></div>
+            <div class="stat-lbl">本周累计</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="statMonthTotal">0<span class="stat-unit">小时</span></div>
+            <div class="stat-lbl">本月累计</div>
+          </div>
+        </div>
+        <!-- 月度条形图 -->
+        <div class="month-chart" id="monthChart"></div>
       </div>
 
       <!-- 🔄 复习 -->
@@ -793,6 +853,85 @@
     function syncTimeInput(){
       const td = ensureToday();
       document.getElementById('timeInput').value = td.time||0;
+    }
+
+    // ===== 练习统计 =====
+    function renderStats(){
+      // 1. 坚持天数（从最近一天往回数到第一个有记录的天）
+      let streak = 0;
+      const d = new Date();
+      while(true){
+        const k = d.toDateString();
+        const day = data[k];
+        const hasPractice = day && (day.time>0 || day.review.length||day.basic.length||day.pieces.length);
+        if(hasPractice){ streak++; d.setDate(d.getDate()-1); }
+        else break;
+      }
+      document.getElementById('statStreak').textContent = streak;
+
+      // 2. 平均每天（近7天）
+      let total7=0, days7=0;
+      for(let i=0;i<7;i++){
+        const dd = new Date(); dd.setDate(dd.getDate()-i);
+        const k = dd.toDateString();
+        const t = data[k]?.time||0;
+        if(t>0){ total7+=t; days7++; }
+      }
+      const dailyAvg = days7>0 ? Math.round(total7/days7) : 0;
+      document.getElementById('statDailyAvg').innerHTML = dailyAvg + '<span class="stat-unit">分</span>';
+
+      // 3. 本周累计（周一到今天）
+      let weekTotal = 0;
+      const today = new Date();
+      const dow = today.getDay() || 7; // 周日=0 转为7
+      for(let i=0;i<dow;i++){
+        const dd = new Date(); dd.setDate(dd.getDate()-i);
+        weekTotal += data[dd.toDateString()]?.time||0;
+      }
+      document.getElementById('statWeekTotal').innerHTML = weekTotal + '<span class="stat-unit">分</span>';
+
+      // 4. 本月累计（小时）
+      const monthKey = today.getFullYear()+'-'+(today.getMonth()+1);
+      let monthTotal = 0;
+      Object.keys(data).forEach(k=>{
+        const d = new Date(k);
+        if(d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth()){
+          monthTotal += data[k].time||0;
+        }
+      });
+      const monthHours = (monthTotal/60).toFixed(1);
+      document.getElementById('statMonthTotal').innerHTML = monthHours + '<span class="stat-unit">小时</span>';
+
+      // 5. 月度条形图（最近3个月）
+      renderMonthChart(today);
+    }
+
+    function renderMonthChart(today){
+      const container = document.getElementById('monthChart');
+      const months = [];
+      for(let i=0;i<3;i++){
+        const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
+        let total=0;
+        Object.keys(data).forEach(k=>{
+          const dd = new Date(k);
+          if(dd.getFullYear()===d.getFullYear() && dd.getMonth()===d.getMonth()){
+            total += data[k].time||0;
+          }
+        });
+        months.push({y:d.getFullYear(), m:d.getMonth()+1, total});
+      }
+      months.reverse();
+      const maxVal = Math.max(...months.map(m=>m.total), 1);
+      container.innerHTML = months.map(m=>{
+        const pct = maxVal>0 ? Math.max((m.total/maxVal)*100, m.total>0?4:0) : 0;
+        const hours = (m.total/60).toFixed(1);
+        return `
+          <div class="month-row">
+            <div class="month-label">${m.m}月<span class="month-year">${m.y}</span></div>
+            <div class="month-bar"><div class="month-bar-fill" style="width:${pct}%"></div></div>
+            <div class="month-val">${hours}小时</div>
+          </div>`;
+      }).join('');
     }
 
     // ===== 钢琴 =====
@@ -1573,6 +1712,7 @@
       renderCalendar();
       updateOverview();
       syncTimeInput();
+      renderStats();
       document.getElementById('todayNotes').value=data[todayKey()]?.notes||'';
     }
 
