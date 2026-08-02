@@ -460,8 +460,9 @@
         <div class="month-chart" id="monthChart"></div>
         <!-- 版本 & 数据操作 -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
-          <span style="font-size:0.65rem;color:var(--text-dim);">v3.3</span>
-          <div style="display:flex;gap:6px;">
+          <span style="font-size:0.65rem;color:var(--text-dim);">v3.4</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="btn btn-sm" id="autoBackupBtn" style="font-size:0.6rem;padding:3px 8px;" onclick="toggleAutoBackup()">🔕 自动备份：关</button>
             <button class="btn btn-sm" style="font-size:0.6rem;padding:3px 8px;opacity:0.7;" onclick="exportData()">📤 导出</button>
             <button class="btn btn-sm" style="font-size:0.6rem;padding:3px 8px;opacity:0.7;" onclick="document.getElementById('importFile').click()">📥 导入</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
@@ -697,7 +698,40 @@
       return data[k];
     }
 
-    function save(){ localStorage.setItem('pp_data', JSON.stringify(data)); }
+    function save(){ 
+      localStorage.setItem('pp_data', JSON.stringify(data)); 
+      // 自动备份：如果开启了自动备份，每次保存都下载备份
+      if(localStorage.getItem('pp_auto_backup') === '1'){
+        autoBackup();
+      }
+    }
+    
+    function autoBackup(){
+      try{
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'piano_auto_backup_'+new Date().toISOString().slice(0,10)+'.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      }catch(e){}
+    }
+    
+    function toggleAutoBackup(){
+      const on = localStorage.getItem('pp_auto_backup') !== '1';
+      localStorage.setItem('pp_auto_backup', on ? '1' : '0');
+      renderAutoBackupBtn();
+      toast(on ? '已开启自动备份 ✅' : '已关闭自动备份');
+    }
+    
+    function renderAutoBackupBtn(){
+      const btn = document.getElementById('autoBackupBtn');
+      if(!btn) return;
+      const on = localStorage.getItem('pp_auto_backup') === '1';
+      btn.textContent = on ? '🔔 自动备份：开' : '🔕 自动备份：关';
+      btn.style.opacity = on ? '1' : '0.5';
+    }
 
     // ===== 页面切换 =====
     function switchPage(name){
@@ -1858,6 +1892,7 @@
       syncTimeInput();
       renderStats();
       document.getElementById('todayNotes').value=data[todayKey()]?.notes||'';
+      renderAutoBackupBtn();
     }
 
     init();
