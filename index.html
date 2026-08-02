@@ -458,6 +458,11 @@
         </div>
         <!-- 月度条形图 -->
         <div class="month-chart" id="monthChart"></div>
+        <!-- 版本 & 数据操作 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+          <span style="font-size:0.65rem;color:var(--text-dim);">v3.2</span>
+          <button class="btn btn-sm" style="font-size:0.65rem;padding:3px 10px;opacity:0.7;" onclick="forceMigrate()">🔄 导入旧数据</button>
+        </div>
       </div>
 
       <!-- 🔄 复习 -->
@@ -1704,29 +1709,50 @@
     }
 
     // ===== 旧数据迁移 =====
-    function migrateOldData(){
-      // 旧版格式：localStorage 'pianoPractice' = { dateStr: { review:0, basic:{}, pieces:{}, reviewDetail:{}, time:0 } }
-      const old = JSON.parse(localStorage.getItem('pianoPractice') || '{}');
-      if(!old || Object.keys(old).length===0) return false;
+    function migrateOldData(force=false){
+      // 尝试多个可能的旧版 key
+      const possibleKeys = ['pianoPractice','piano_data','practice_data','pp_data_old'];
+      let old = null;
+      let foundKey = '';
+      for(const key of possibleKeys){
+        const raw = localStorage.getItem(key);
+        if(raw){
+          try{
+            const parsed = JSON.parse(raw);
+            if(parsed && typeof parsed==='object' && Object.keys(parsed).length>0){
+              old = parsed;
+              foundKey = key;
+              break;
+            }
+          }catch(e){}
+        }
+      }
+      if(!old || Object.keys(old).length===0) return {migrated:0, msg:'没有找到旧数据'};
+      
+      // 检查是否已迁移过（数据已在新 key 中）
       let migrated = 0;
+      let skipped = 0;
       Object.keys(old).forEach(dateStr=>{
         const o = old[dateStr];
         if(!o) return;
-        // 跳过已有数据的天
-        if(data[dateStr] && (data[dateStr].review.length||data[dateStr].basic.length||data[dateStr].pieces.length)) return;
+        // 如果已有该天数据且非强制，跳过
+        if(!force && data[dateStr] && (data[dateStr].review.length||data[dateStr].basic.length||data[dateStr].pieces.length)){
+          skipped++;
+          return;
+        }
         const newData = { review:[], basic:[], pieces:[], notes:'', time: o.time||0 };
-        // 旧版 review 是数字（复习次数），新版是数组
+        // 旧版 review 是数字（复习次数）
         if(typeof o.review === 'number' && o.review>0){
           newData.review.push({name:'复习（旧记录）', count:o.review});
         }
-        // 旧版 basic 是 {id:{count}} 或 {b12:3}，新版是数组
+        // 旧版 basic 是 {id:count}
         if(o.basic && typeof o.basic==='object'){
           Object.keys(o.basic).forEach(k=>{
             const cnt = o.basic[k];
             if(cnt>0) newData.basic.push({name:'拜厄 '+k.replace('b','No.'), count:cnt});
           });
         }
-        // 旧版 pieces 是 {id:bool}，新版是数组
+        // 旧版 pieces 是 {id:bool}
         if(o.pieces && typeof o.pieces==='object'){
           Object.keys(o.pieces).forEach(k=>{
             newData.pieces.push({name:'乐曲 '+k, done:!!o.pieces[k]});
@@ -1746,15 +1772,28 @@
       });
       if(migrated>0){
         save();
-        localStorage.removeItem('pianoPractice'); // 清除旧数据
+        if(foundKey==='pianoPractice') localStorage.removeItem('pianoPractice'); // 清除旧数据避免重复
       }
-      return migrated;
+      return {migrated, skipped, msg: migrated>0 ? `成功导入 ${migrated} 天记录` : (skipped>0 ? `已有 ${skipped} 天记录，无需重复导入` : '没有需要导入的新记录')};
     }
 
     function checkAndMigrate(){
-      const count = migrateOldData();
-      if(count){
-        toast('已导入 '+count+' 天旧记录 ✓');
+      const result = migrateOldData();
+      if(result.migrated > 0){
+        toast('✅ '+result.msg);
+        renderReview();renderBasic();renderPieces();
+        renderCalendar();
+        updateOverview();
+        renderStats();
+        syncTimeInput();
+      }
+    }
+    
+    // 手动迁移：强制覆盖 + 显示详细结果
+    function forceMigrate(){
+      const result = migrateOldData(true);
+      toast(result.msg);
+      if(result.migrated > 0){
         renderReview();renderBasic();renderPieces();
         renderCalendar();
         updateOverview();
