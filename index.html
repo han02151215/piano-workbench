@@ -1703,11 +1703,72 @@
       navigator.serviceWorker.register('sw.js').catch(()=>{});
     }
 
+    // ===== 旧数据迁移 =====
+    function migrateOldData(){
+      // 旧版格式：localStorage 'pianoPractice' = { dateStr: { review:0, basic:{}, pieces:{}, reviewDetail:{}, time:0 } }
+      const old = JSON.parse(localStorage.getItem('pianoPractice') || '{}');
+      if(!old || Object.keys(old).length===0) return false;
+      let migrated = 0;
+      Object.keys(old).forEach(dateStr=>{
+        const o = old[dateStr];
+        if(!o) return;
+        // 跳过已有数据的天
+        if(data[dateStr] && (data[dateStr].review.length||data[dateStr].basic.length||data[dateStr].pieces.length)) return;
+        const newData = { review:[], basic:[], pieces:[], notes:'', time: o.time||0 };
+        // 旧版 review 是数字（复习次数），新版是数组
+        if(typeof o.review === 'number' && o.review>0){
+          newData.review.push({name:'复习（旧记录）', count:o.review});
+        }
+        // 旧版 basic 是 {id:{count}} 或 {b12:3}，新版是数组
+        if(o.basic && typeof o.basic==='object'){
+          Object.keys(o.basic).forEach(k=>{
+            const cnt = o.basic[k];
+            if(cnt>0) newData.basic.push({name:'拜厄 '+k.replace('b','No.'), count:cnt});
+          });
+        }
+        // 旧版 pieces 是 {id:bool}，新版是数组
+        if(o.pieces && typeof o.pieces==='object'){
+          Object.keys(o.pieces).forEach(k=>{
+            newData.pieces.push({name:'乐曲 '+k, done:!!o.pieces[k]});
+          });
+        }
+        // 旧版 reviewDetail 是 {曲名:count}
+        if(o.reviewDetail && typeof o.reviewDetail==='object'){
+          Object.keys(o.reviewDetail).forEach(name=>{
+            const cnt = o.reviewDetail[name]||0;
+            if(cnt>0) newData.review.push({name:name, count:cnt});
+          });
+        }
+        // 旧版 notes
+        if(o.notes) newData.notes = o.notes;
+        data[dateStr] = newData;
+        migrated++;
+      });
+      if(migrated>0){
+        save();
+        localStorage.removeItem('pianoPractice'); // 清除旧数据
+      }
+      return migrated;
+    }
+
+    function checkAndMigrate(){
+      const count = migrateOldData();
+      if(count){
+        toast('已导入 '+count+' 天旧记录 ✓');
+        renderReview();renderBasic();renderPieces();
+        renderCalendar();
+        updateOverview();
+        renderStats();
+        syncTimeInput();
+      }
+    }
+
     // ===== 初始化 =====
     function init(){
       const now=new Date();
       document.getElementById('currentDate').textContent=now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
       ensureToday();
+      checkAndMigrate();
       renderReview();renderBasic();renderPieces();
       renderCalendar();
       updateOverview();
