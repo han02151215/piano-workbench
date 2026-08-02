@@ -460,8 +460,12 @@
         <div class="month-chart" id="monthChart"></div>
         <!-- 版本 & 数据操作 -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
-          <span style="font-size:0.65rem;color:var(--text-dim);">v3.2</span>
-          <button class="btn btn-sm" style="font-size:0.65rem;padding:3px 10px;opacity:0.7;" onclick="forceMigrate()">🔄 导入旧数据</button>
+          <span style="font-size:0.65rem;color:var(--text-dim);">v3.3</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm" style="font-size:0.6rem;padding:3px 8px;opacity:0.7;" onclick="exportData()">📤 导出</button>
+            <button class="btn btn-sm" style="font-size:0.6rem;padding:3px 8px;opacity:0.7;" onclick="document.getElementById('importFile').click()">📥 导入</button>
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+          </div>
         </div>
       </div>
 
@@ -1800,6 +1804,46 @@
         renderStats();
         syncTimeInput();
       }
+    }
+    
+    // ===== 数据导出/导入 =====
+    function exportData(){
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'piano_backup_'+new Date().toISOString().slice(0,10)+'.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('数据已导出 📤');
+    }
+    
+    function importData(e){
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev){
+        try{
+          const imported = JSON.parse(ev.target.result);
+          if(typeof imported !== 'object' || !imported) throw new Error('格式错误');
+          let count = 0;
+          Object.keys(imported).forEach(dateStr => {
+            const d = imported[dateStr];
+            if(d && typeof d === 'object'){
+              data[dateStr] = d;
+              count++;
+            }
+          });
+          save();
+          toast('成功导入 '+count+' 天记录 ✅');
+          renderReview();renderBasic();renderPieces();
+          renderCalendar();updateOverview();renderStats();syncTimeInput();
+        }catch(err){
+          toast('导入失败：文件格式不正确 ❌');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
     }
 
     // ===== 初始化 =====
