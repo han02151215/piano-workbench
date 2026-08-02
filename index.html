@@ -1882,6 +1882,60 @@
 
     // ===== 初始化 =====
     function init(){
+      // 预设历史数据（从截图恢复）
+      const PRESET_DATA = {
+        "Sat Jul 26 2026": {
+          review: [
+            {name:"拜厄12 13 14 15 16", count:5},
+            {name:"小汤2 跟着小队长 轻轻的划", count:5},
+            {name:"小汤3 旋律 蜜蜂 无事生非", count:5},
+            {name:"大汤1 交通警 湖上天鹅 音苑 音乐台阶 奔流的河", count:5}
+          ],
+          basic: [
+            {name:"拜厄17", count:5},
+            {name:"18", count:5},
+            {name:"19", count:5},
+            {name:"20", count:5},
+            {name:"21", count:5}
+          ],
+          pieces: [
+            {name:"大汤1-磨刀匠 一分糖的歌", done:true},
+            {name:"小汤3-有些人", done:true},
+            {name:"拜厄-22", done:true}
+          ],
+          notes: "",
+          time: 164
+        },
+        "Fri Aug 01 2026": {
+          review: [
+            {name:"大汤1-音苑 音乐台阶 奔流的河 交通警 湖上天鹅 磨刀 一分糖", count:0},
+            {name:"小汤3-旋律 无事生非 蜜蜂 有些人", count:0},
+            {name:"拜厄-12-21", count:0}
+          ],
+          basic: [
+            {name:"拜厄22", count:0},
+            {name:"23", count:0},
+            {name:"24", count:0}
+          ],
+          pieces: [
+            {name:"大汤-月亮里的人", done:true},
+            {name:"小汤3-动物展览会 在堤岸上 日出", done:true}
+          ],
+          notes: "",
+          time: 314
+        }
+      };
+      
+      // 合并预设数据（仅当本地没有时才写入）
+      let hasPreset = false;
+      Object.keys(PRESET_DATA).forEach(k=>{
+        if(!data[k] || (data[k].review.length===0 && data[k].basic.length===0 && data[k].pieces.length===0)){
+          data[k] = PRESET_DATA[k];
+          hasPreset = true;
+        }
+      });
+      if(hasPreset) save();
+      
       const now=new Date();
       document.getElementById('currentDate').textContent=now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
       ensureToday();
