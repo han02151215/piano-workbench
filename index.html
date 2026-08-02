@@ -700,9 +700,14 @@
 
     function save(){ 
       localStorage.setItem('pp_data', JSON.stringify(data)); 
-      // 自动备份：如果开启了自动备份，每次保存都下载备份
+      // 自动备份：如果开启了自动备份，且今天还没备份过
       if(localStorage.getItem('pp_auto_backup') === '1'){
-        autoBackup();
+        const today = new Date().toDateString();
+        const lastBackup = localStorage.getItem('pp_last_backup_date');
+        if(lastBackup !== today){
+          autoBackup();
+          localStorage.setItem('pp_last_backup_date', today);
+        }
       }
     }
     
