@@ -151,16 +151,29 @@
 
   <!-- 📅 今日记录 -->
   <div class="page active" id="page-today">
-    <!-- 时长输入 -->
+    <!-- 时长输入（分支） -->
     <div class="card">
       <div class="card-title">
         <span class="title-icon">⏱️</span>
         <span class="title-left">练习时长</span>
-        <span class="title-extra" id="todayWeekInfo"></span>
+        <span class="title-extra" id="todayTotalTime">总计 0 分钟</span>
       </div>
-      <div class="time-input-row">
-        <input type="number" id="timeInput" inputmode="numeric" placeholder="分钟" min="0">
-        <span class="unit">分钟</span>
+      <div style="display:grid;gap:8px;">
+        <div class="time-input-row">
+          <span style="font-size:0.85rem;width:70px;">🔄 复习</span>
+          <input type="number" id="timeReview" inputmode="numeric" placeholder="0" min="0" oninput="updateTodayTotal()">
+          <span class="unit">分钟</span>
+        </div>
+        <div class="time-input-row">
+          <span style="font-size:0.85rem;width:70px;">💪 基本功</span>
+          <input type="number" id="timeBasic" inputmode="numeric" placeholder="0" min="0" oninput="updateTodayTotal()">
+          <span class="unit">分钟</span>
+        </div>
+        <div class="time-input-row">
+          <span style="font-size:0.85rem;width:70px;">🎵 乐曲</span>
+          <input type="number" id="timePiece" inputmode="numeric" placeholder="0" min="0" oninput="updateTodayTotal()">
+          <span class="unit">分钟</span>
+        </div>
       </div>
     </div>
 
@@ -283,6 +296,7 @@
           <div class="stat-lbl">练习率</div>
         </div>
       </div>
+      <div id="monthBranchStats"></div>
     </div>
 
     <div class="card">
@@ -395,7 +409,11 @@
     
     function ensureToday(){
       const k = todayKey();
-      if(!daily[k]) daily[k] = { time: 0, content: '' };
+      if(!daily[k]) daily[k] = { time:0, timeReview:0, timeBasic:0, timePiece:0, content:'' };
+      // 兼容旧数据
+      if(daily[k].timeReview===undefined) daily[k].timeReview = 0;
+      if(daily[k].timeBasic===undefined) daily[k].timeBasic = 0;
+      if(daily[k].timePiece===undefined) daily[k].timePiece = 0;
       return daily[k];
     }
     
@@ -421,14 +439,30 @@
       if(name==='piano') { renderPiano(); renderGames(); renderTheory(); }
     }
     
+    // 获取某天的总时长（兼容旧数据）
+    function dayTotalTime(d){
+      if(!d) return 0;
+      if(d.timeReview || d.timeBasic || d.timePiece){
+        return (d.timeReview||0) + (d.timeBasic||0) + (d.timePiece||0);
+      }
+      return d.time || 0;
+    }
+    
     // ===== 今日 =====
+    function updateTodayTotal(){
+      const r = parseInt(document.getElementById('timeReview').value) || 0;
+      const b = parseInt(document.getElementById('timeBasic').value) || 0;
+      const p = parseInt(document.getElementById('timePiece').value) || 0;
+      document.getElementById('todayTotalTime').textContent = '总计 ' + (r+b+p) + ' 分钟';
+    }
+    
     function renderToday(){
       const today = ensureToday();
-      document.getElementById('timeInput').value = today.time || '';
+      document.getElementById('timeReview').value = today.timeReview || '';
+      document.getElementById('timeBasic').value = today.timeBasic || '';
+      document.getElementById('timePiece').value = today.timePiece || '';
+      updateTodayTotal();
       document.getElementById('todayContent').value = today.content || '';
-      // 本周信息
-      const wk = weekKey(new Date());
-      document.getElementById('todayWeekInfo').textContent = wk;
       // 本周统计
       const weekData = getWeekData(new Date());
       document.getElementById('weekTotalTime').innerHTML = weekData.totalTime + '<span class="stat-unit">分</span>';
@@ -442,10 +476,11 @@
     
     function saveToday(){
       const today = ensureToday();
-      const t = parseInt(document.getElementById('timeInput').value) || 0;
-      const c = document.getElementById('todayContent').value;
-      today.time = t;
-      today.content = c;
+      today.timeReview = parseInt(document.getElementById('timeReview').value) || 0;
+      today.timeBasic = parseInt(document.getElementById('timeBasic').value) || 0;
+      today.timePiece = parseInt(document.getElementById('timePiece').value) || 0;
+      today.time = today.timeReview + today.timeBasic + today.timePiece;
+      today.content = document.getElementById('todayContent').value;
       save();
       toast('已保存 ✓');
       renderToday();
@@ -465,18 +500,24 @@
         nd.setDate(nd.getDate() + i);
         dates.push(nd);
       }
-      let totalTime = 0;
+      let totalTime = 0, totalReview = 0, totalBasic = 0, totalPiece = 0;
       let days = 0;
       let maxTime = 0;
       dates.forEach(dt=>{
         const k = dateKey(dt);
-        if(daily[k] && daily[k].time > 0){
-          totalTime += daily[k].time;
-          days++;
-          if(daily[k].time > maxTime) maxTime = daily[k].time;
+        if(daily[k]){
+          const t = dayTotalTime(daily[k]);
+          if(t > 0){
+            totalTime += t;
+            totalReview += daily[k].timeReview || 0;
+            totalBasic += daily[k].timeBasic || 0;
+            totalPiece += daily[k].timePiece || 0;
+            days++;
+            if(t > maxTime) maxTime = t;
+          }
         }
       });
-      return {dates, totalTime, days, maxTime};
+      return {dates, totalTime, totalReview, totalBasic, totalPiece, days, maxTime};
     }
     
     function renderWeek(){
@@ -508,15 +549,44 @@
       document.getElementById('wStat3').innerHTML = (weekData.days>0 ? Math.round(weekData.totalTime/weekData.days) : 0) + '<span class="stat-unit">分</span>';
       document.getElementById('wStat4').innerHTML = weekData.maxTime + '<span class="stat-unit">分</span>';
       
+      // 分支统计条
+      let branchHtml = '';
+      if(weekData.totalTime > 0){
+        const r = weekData.totalReview, b = weekData.totalBasic, p = weekData.totalPiece;
+        const rp = Math.round(r/weekData.totalTime*100);
+        const bp = Math.round(b/weekData.totalTime*100);
+        const pp = 100 - rp - bp;
+        branchHtml = `<div style="margin-top:10px;">
+          <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:6px;">
+            <div style="width:${rp}%;background:var(--accent);" title="复习"></div>
+            <div style="width:${bp}%;background:var(--accent2);" title="基本功"></div>
+            <div style="width:${pp}%;background:var(--success);" title="乐曲"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-dim);">
+            <span>🔄 复习 ${r}分</span>
+            <span>💪 基本功 ${b}分</span>
+            <span>🎵 乐曲 ${p}分</span>
+          </div>
+        </div>`;
+      }
+      const oldStats = document.getElementById('wStat4').parentElement;
+      if(oldStats.nextElementSibling && oldStats.nextElementSibling.classList.contains('branch-stats')){
+        oldStats.nextElementSibling.remove();
+      }
+      if(branchHtml){
+        oldStats.insertAdjacentHTML('afterend', '<div class="branch-stats">'+branchHtml+'</div>');
+      }
+      
       // 内容回顾
       const review = document.getElementById('weekReview');
       const days = weekData.dates;
       const items = [];
       days.forEach(dt=>{
         const k = dateKey(dt);
-        if(daily[k] && (daily[k].time > 0 || daily[k].content)){
+        if(daily[k] && (dayTotalTime(daily[k]) > 0 || daily[k].content)){
           const dateLabel = `${dt.getMonth()+1}/${dt.getDate()} 周${'日一二三四五六'[dt.getDay()]}`;
-          items.push({date: dateLabel, time: daily[k].time||0, content: daily[k].content||''});
+          const d = daily[k];
+          items.push({date: dateLabel, time: dayTotalTime(d), r:d.timeReview||0, b:d.timeBasic||0, p:d.timePiece||0, content: d.content||''});
         }
       });
       if(items.length === 0){
@@ -529,6 +599,9 @@
                 <span class="tag">${it.date}</span>
                 ${it.time > 0 ? '<span class="tag" style="background:var(--accent);">⏱ '+it.time+'分</span>' : ''}
               </div>
+              ${it.time > 0 ? `<div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:4px;">
+                🔄 ${it.r} · 💪 ${it.b} · 🎵 ${it.p}
+              </div>` : ''}
               <div style="font-size:0.85rem;white-space:pre-wrap;">${escapeHtml(it.content || '(无内容)')}</div>
             </div>
           </div>
@@ -577,19 +650,22 @@
       const year = date.getFullYear();
       const month = date.getMonth();
       const daysInMonth = new Date(year, month+1, 0).getDate();
-      let totalTime = 0;
+      let totalTime = 0, totalReview = 0, totalBasic = 0, totalPiece = 0;
       let days = 0;
-      let streak = 0;
       let maxStreak = 0;
       let curStreak = 0;
       const dayData = [];
       for(let d=1; d<=daysInMonth; d++){
         const dt = new Date(year, month, d);
         const k = dateKey(dt);
-        const t = (daily[k] && daily[k].time) || 0;
-        dayData.push({date:dt, time:t});
+        const entry = daily[k];
+        const t = entry ? dayTotalTime(entry) : 0;
+        dayData.push({date:dt, time:t, review:entry?.timeReview||0, basic:entry?.timeBasic||0, piece:entry?.timePiece||0});
         if(t > 0){
           totalTime += t;
+          totalReview += entry?.timeReview || 0;
+          totalBasic += entry?.timeBasic || 0;
+          totalPiece += entry?.timePiece || 0;
           days++;
           curStreak++;
           if(curStreak > maxStreak) maxStreak = curStreak;
@@ -597,7 +673,7 @@
           curStreak = 0;
         }
       }
-      return {totalTime, days, maxStreak, dayData, daysInMonth};
+      return {totalTime, totalReview, totalBasic, totalPiece, days, maxStreak, dayData, daysInMonth};
     }
     
     function renderMonth(){
@@ -619,6 +695,30 @@
       document.getElementById('mStat2').innerHTML = md.days + '<span class="stat-unit">天</span>';
       document.getElementById('mStat3').innerHTML = md.maxStreak + '<span class="stat-unit">天</span>';
       document.getElementById('mStat4').innerHTML = practiceRate + '<span class="stat-unit">%</span>';
+      
+      // 分支统计
+      const branchEl = document.getElementById('monthBranchStats');
+      if(md.totalTime > 0){
+        const r = md.totalReview, b = md.totalBasic, p = md.totalPiece;
+        const rp = Math.round(r/md.totalTime*100);
+        const bp = Math.round(b/md.totalTime*100);
+        const pp = 100 - rp - bp;
+        const rh = (r/60).toFixed(1), bh = (b/60).toFixed(1), ph = (p/60).toFixed(1);
+        branchEl.innerHTML = `<div style="margin-top:6px;">
+          <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:8px;">
+            <div style="width:${rp}%;background:var(--accent);"></div>
+            <div style="width:${bp}%;background:var(--accent2);"></div>
+            <div style="width:${pp}%;background:var(--success);"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;">
+            <div><div style="font-size:0.75rem;color:var(--accent);font-weight:600;">🔄 复习</div><div style="font-size:0.8rem;">${rh}h</div><div style="font-size:0.65rem;color:var(--text-dim);">${rp}%</div></div>
+            <div><div style="font-size:0.75rem;color:var(--accent2);font-weight:600;">💪 基本功</div><div style="font-size:0.8rem;">${bh}h</div><div style="font-size:0.65rem;color:var(--text-dim);">${bp}%</div></div>
+            <div><div style="font-size:0.75rem;color:var(--success);font-weight:600;">🎵 乐曲</div><div style="font-size:0.8rem;">${ph}h</div><div style="font-size:0.65rem;color:var(--text-dim);">${pp}%</div></div>
+          </div>
+        </div>`;
+      } else {
+        branchEl.innerHTML = '';
+      }
       
       // 热力图
       const heat = document.getElementById('heatmap');
