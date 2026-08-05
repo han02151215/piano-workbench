@@ -963,7 +963,81 @@
     }
     
     // ===== 初始化 =====
+    // ===== 旧数据导入 =====
+    function importOldData(){
+      // 旧版 v3.x 数据格式：pp_data = { dateStr: { review:[{name,count}], basic:[{name,count}], pieces:[{name,done}], notes, time } }
+      const oldRaw = localStorage.getItem('pp_data');
+      if(!oldRaw) return 0;
+      let old;
+      try { old = JSON.parse(oldRaw); } catch(e){ return 0; }
+      if(!old || typeof old !== 'object') return 0;
+      
+      let imported = 0;
+      Object.keys(old).forEach(dateStr=>{
+        // 跳过已有该天数据
+        if(daily[dateStr] && dayTotalTime(daily[dateStr]) > 0) return;
+        const o = old[dateStr];
+        if(!o) return;
+        
+        const totalTime = o.time || 0;
+        // 从旧数据内容生成描述文本
+        let contentParts = [];
+        
+        // review 项
+        if(o.review && o.review.length > 0){
+          const reviewItems = o.review.map(r=> r.name + (r.count>0 ? ' ×'+r.count : ''));
+          contentParts.push('复习：' + reviewItems.join('、'));
+        }
+        // basic 项
+        if(o.basic && o.basic.length > 0){
+          const basicItems = o.basic.map(b=> b.name + (b.count>0 ? ' ×'+b.count : ''));
+          contentParts.push('基本功：' + basicItems.join('、'));
+        }
+        // pieces 项
+        if(o.pieces && o.pieces.length > 0){
+          const pieceItems = o.pieces.map(p=> p.name + (p.done ? ' ✓' : ''));
+          contentParts.push('乐曲：' + pieceItems.join('、'));
+        }
+        // notes
+        if(o.notes) contentParts.push('笔记：' + o.notes);
+        
+        // 估算分支时间（按项目数比例分配总时间）
+        const revCount = (o.review||[]).length;
+        const basicCount = (o.basic||[]).length;
+        const pieceCount = (o.pieces||[]).length;
+        const totalItems = revCount + basicCount + pieceCount;
+        
+        let timeRev = 0, timeBasic = 0, timePiece = 0;
+        if(totalItems > 0){
+          timeRev = Math.round(totalTime * revCount / totalItems);
+          timeBasic = Math.round(totalTime * basicCount / totalItems);
+          timePiece = totalTime - timeRev - timeBasic; // 余数归乐曲
+        } else {
+          timeRev = totalTime; // 全放复习
+        }
+        
+        daily[dateStr] = {
+          time: totalTime,
+          timeReview: timeRev,
+          timeBasic: timeBasic,
+          timePiece: timePiece,
+          content: contentParts.join('\n')
+        };
+        imported++;
+      });
+      
+      if(imported > 0){
+        save();
+        // 不清除旧数据，保留作为备份
+        toast('✅ 已导入 ' + imported + ' 天历史记录');
+      }
+      return imported;
+    }
+    
     function init(){
+      // 导入旧数据
+      importOldData();
+      
       const now = new Date();
       document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
       ensureToday();
