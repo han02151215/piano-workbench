@@ -212,6 +212,10 @@
           <div class="stat-lbl">日均时长</div>
         </div>
       </div>
+      <div style="margin-top:10px;display:flex;gap:6px;">
+        <button class="btn btn-ghost" style="flex:1;font-size:0.7rem;padding:6px;" onclick="importOldData(true)">🔄 导入旧数据</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:0.7rem;padding:6px;" onclick="diagnoseData()">🔍 诊断</button>
+      </div>
     </div>
   </div>
 
@@ -964,74 +968,117 @@
     
     // ===== 初始化 =====
     // ===== 旧数据导入 =====
-    function importOldData(){
-      // 旧版 v3.x 数据格式：pp_data = { dateStr: { review:[{name,count}], basic:[{name,count}], pieces:[{name,done}], notes, time } }
-      const oldRaw = localStorage.getItem('pp_data');
-      if(!oldRaw) return 0;
-      let old;
-      try { old = JSON.parse(oldRaw); } catch(e){ return 0; }
-      if(!old || typeof old !== 'object') return 0;
-      
-      let imported = 0;
-      Object.keys(old).forEach(dateStr=>{
-        // 跳过已有该天数据
-        if(daily[dateStr] && dayTotalTime(daily[dateStr]) > 0) return;
-        const o = old[dateStr];
-        if(!o) return;
-        
-        const totalTime = o.time || 0;
-        // 从旧数据内容生成描述文本
-        let contentParts = [];
-        
-        // review 项
-        if(o.review && o.review.length > 0){
-          const reviewItems = o.review.map(r=> r.name + (r.count>0 ? ' ×'+r.count : ''));
-          contentParts.push('复习：' + reviewItems.join('、'));
+    function importOldData(manual=false){
+      // 尝试多个可能的旧 key
+      const possibleKeys = ['pp_data', 'pianoPractice', 'piano_data'];
+      let oldRaw = null;
+      let foundKey = '';
+      for(const key of possibleKeys){
+        const raw = localStorage.getItem(key);
+        if(raw && raw.length > 10){
+          oldRaw = raw;
+          foundKey = key;
+          break;
         }
-        // basic 项
-        if(o.basic && o.basic.length > 0){
-          const basicItems = o.basic.map(b=> b.name + (b.count>0 ? ' ×'+b.count : ''));
-          contentParts.push('基本功：' + basicItems.join('、'));
-        }
-        // pieces 项
-        if(o.pieces && o.pieces.length > 0){
-          const pieceItems = o.pieces.map(p=> p.name + (p.done ? ' ✓' : ''));
-          contentParts.push('乐曲：' + pieceItems.join('、'));
-        }
-        // notes
-        if(o.notes) contentParts.push('笔记：' + o.notes);
-        
-        // 估算分支时间（按项目数比例分配总时间）
-        const revCount = (o.review||[]).length;
-        const basicCount = (o.basic||[]).length;
-        const pieceCount = (o.pieces||[]).length;
-        const totalItems = revCount + basicCount + pieceCount;
-        
-        let timeRev = 0, timeBasic = 0, timePiece = 0;
-        if(totalItems > 0){
-          timeRev = Math.round(totalTime * revCount / totalItems);
-          timeBasic = Math.round(totalTime * basicCount / totalItems);
-          timePiece = totalTime - timeRev - timeBasic; // 余数归乐曲
-        } else {
-          timeRev = totalTime; // 全放复习
-        }
-        
-        daily[dateStr] = {
-          time: totalTime,
-          timeReview: timeRev,
-          timeBasic: timeBasic,
-          timePiece: timePiece,
-          content: contentParts.join('\n')
-        };
-        imported++;
-      });
-      
-      if(imported > 0){
-        save();
-        // 不清除旧数据，保留作为备份
-        toast('✅ 已导入 ' + imported + ' 天历史记录');
       }
+      
+      if(!oldRaw){
+        if(manual) toast('❌ 没有找到旧数据。可能是：\n1)旧数据在另一个书签/PWA里\n2)localStorage已被清除');
+        return 0;
+      }
+      
+      let old;
+      try { old = JSON.parse(oldRaw); } catch(e){ 
+        if(manual) toast('❌ 数据格式无法解析');
+        return 0; 
+      }
+      if(!old || typeof old !== 'object' || Object.keys(old).length === 0){
+        if(manual) toast('❌ 旧数据为空');
+        return 0;
+      }
+      
+      // 判断数据格式：v3格式有 review/basic/pieces 字段，v4格式有 timeReview
+      let imported = 0;
+      const firstEntry = old[Object.keys(old)[0]];
+      
+      // 已经是新格式，直接合并
+      if(firstEntry && (firstEntry.timeReview !== undefined || firstEntry.content !== undefined)){
+        Object.keys(old).forEach(dateStr=>{
+          if(daily[dateStr] && dayTotalTime(daily[dateStr]) > 0) return;
+          const o = old[dateStr];
+          if(!o) return;
+          daily[dateStr] = {
+            time: (o.timeReview||0)+(o.timeBasic||0)+(o.timePiece||0),
+            timeReview: o.timeReview||0,
+            timeBasic: o.timeBasic||0,
+            timePiece: o.timePiece||0,
+            content: o.content||''
+          };
+          imported++;
+        });
+      } else {
+        // v3 旧格式转换
+        Object.keys(old).forEach(dateStr=>{
+          if(daily[dateStr] && dayTotalTime(daily[dateStr]) > 0) return;
+          const o = old[dateStr];
+          if(!o) return;
+          
+          const totalTime = o.time || 0;
+          let contentParts = [];
+          if(o.review && o.review.length > 0){
+            contentParts.push('复习：'+o.review.map(r=>r.name+(r.count>0?' ×'+r.count:'')).join('、'));
+          }
+          if(o.basic && o.basic.length > 0){
+            contentParts.push('基本功：'+o.basic.map(b=>b.name+(b.count>0?' ×'+b.count:'')).join('、'));
+          }
+          if(o.pieces && o.pieces.length > 0){
+            contentParts.push('乐曲：'+o.pieces.map(p=>p.name+(p.done?' ✓':'')).join('、'));
+          }
+          if(o.notes) contentParts.push('笔记：'+o.notes);
+          
+          const revCount=(o.review||[]).length, basicCount=(o.basic||[]).length, pieceCount=(o.pieces||[]).length;
+          const totalItems=revCount+basicCount+pieceCount;
+          let tr=0,tb=0,tp=0;
+          if(totalItems>0){tr=Math.round(totalTime*revCount/totalItems);tb=Math.round(totalTime*basicCount/totalItems);tp=totalTime-tr-tb;}
+          else tr=totalTime;
+          
+          daily[dateStr]={time:totalTime,timeReview:tr,timeBasic:tb,timePiece:tp,content:contentParts.join('\n')};
+          imported++;
+        });
+      }
+      
+      if(imported>0){
+        save();
+        if(manual) toast('✅ 成功导入 '+imported+' 天记录！（来源：'+foundKey+'）');
+      } else {
+        if(manual) toast('已有 '+Object.keys(daily).length+' 天数据，未发现新的可导入记录');
+      }
+      renderToday();
       return imported;
+    }
+    
+    function diagnoseData(){
+      let info = [];
+      // 检查所有可能的 localStorage key
+      const keys = ['pp_daily','pp_data','pianoPractice','pp_goals','pp_summary'];
+      keys.forEach(k=>{
+        const v = localStorage.getItem(k);
+        if(v){
+          try{
+            const parsed = JSON.parse(v);
+            if(typeof parsed === 'object'){
+              info.push(k + ': ' + Object.keys(parsed).length + ' 条记录');
+            }
+          }catch(e){
+            info.push(k + ': 有数据但非JSON('+v.length+'字符)');
+          }
+        } else {
+          info.push(k + ': 无');
+        }
+      });
+      // 检查是否是 PWA standalone 模式
+      info.push('模式: ' + (window.matchMedia('(display-mode: standalone)').matches ? 'PWA独立窗口' : 'Safari浏览器'));
+      toast('📋 ' + info.join('\n'));
     }
     
     function init(){
