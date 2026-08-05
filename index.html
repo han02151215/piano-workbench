@@ -1063,35 +1063,44 @@
     
     function diagnoseData(){
       let info = [];
-      const keys = ['pp_daily','pp_data','pp_goals','pp_summary'];
-      keys.forEach(k=>{
-        const v = localStorage.getItem(k);
-        if(v){
-          try{
-            const parsed = JSON.parse(v);
-            if(typeof parsed === 'object'){
-              info.push(k + ': ' + Object.keys(parsed).length + ' 条记录');
-            }
-          }catch(e){ info.push(k + ': 有数据但非JSON('+v.length+'字符)'); }
-        } else { info.push(k + ': 无'); }
-      });
-      // 显示每天的明细
+      // pp_data 原始数据明细
+      const oldRaw = localStorage.getItem('pp_data');
+      if(oldRaw){
+        try{
+          const old = JSON.parse(oldRaw);
+          if(old && typeof old === 'object'){
+            let totalOldMins = 0;
+            Object.keys(old).sort().forEach(k=>{
+              const o = old[k];
+              let t = 0;
+              if(o && typeof o === 'object'){
+                if(o.time) t = o.time;
+                else if(o.timeReview || o.timeBasic || o.timePiece){
+                  t = (o.timeReview||0)+(o.timeBasic||0)+(o.timePiece||0);
+                }
+              }
+              totalOldMins += t;
+              info.push('旧 ' + k.split(' ').slice(0,3).join(' ') + ': ' + t + '分');
+            });
+            info.push('旧数据总计: ' + (totalOldMins/60).toFixed(1) + '小时');
+          }
+        }catch(e){ info.push('pp_data 解析失败'); }
+      } else { info.push('pp_data: 无'); }
+      
+      // 新数据明细
+      info.push('---');
       const allDays = Object.keys(daily).sort();
       if(allDays.length > 0){
         let totalMins = 0;
-        const lines = allDays.map(k=>{
+        allDays.forEach(k=>{
           const d = daily[k];
           const t = (d.timeReview||0)+(d.timeBasic||0)+(d.timePiece||0);
           totalMins += t;
-          const datePart = k.split(' ').slice(0,3).join(' ');
-          return datePart + ': ' + t + '分';
+          info.push('新 ' + k.split(' ').slice(0,3).join(' ') + ': ' + t + '分');
         });
-        info.push('---每日明细---');
-        info.push(...lines);
-        info.push('总计: ' + (totalMins/60).toFixed(1) + '小时');
+        info.push('新数据总计: ' + (totalMins/60).toFixed(1) + '小时');
       }
       info.push('模式: ' + (window.matchMedia('(display-mode: standalone)').matches ? 'PWA' : 'Safari'));
-      // 因为 toast 太小，改用弹窗
       alert('📋 数据诊断\n\n' + info.join('\n'));
     }
     
