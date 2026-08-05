@@ -999,14 +999,16 @@
       
       // 判断数据格式：v3格式有 review/basic/pieces 字段，v4格式有 timeReview
       let imported = 0;
+      let skipped = 0;
       const firstEntry = old[Object.keys(old)[0]];
       
       // 已经是新格式，直接合并
       if(firstEntry && (firstEntry.timeReview !== undefined || firstEntry.content !== undefined)){
         Object.keys(old).forEach(dateStr=>{
-          if(daily[dateStr] && dayTotalTime(daily[dateStr]) > 0) return;
           const o = old[dateStr];
           if(!o) return;
+          // 手动导入时强制覆盖，自动导入时跳过已有数据
+          if(!manual && daily[dateStr] && dayTotalTime(daily[dateStr]) > 0){ skipped++; return; }
           daily[dateStr] = {
             time: (o.timeReview||0)+(o.timeBasic||0)+(o.timePiece||0),
             timeReview: o.timeReview||0,
@@ -1019,9 +1021,9 @@
       } else {
         // v3 旧格式转换
         Object.keys(old).forEach(dateStr=>{
-          if(daily[dateStr] && dayTotalTime(daily[dateStr]) > 0) return;
           const o = old[dateStr];
           if(!o) return;
+          if(!manual && daily[dateStr] && dayTotalTime(daily[dateStr]) > 0){ skipped++; return; }
           
           const totalTime = o.time || 0;
           let contentParts = [];
@@ -1049,7 +1051,9 @@
       
       if(imported>0){
         save();
-        if(manual) toast('✅ 成功导入 '+imported+' 天记录！（来源：'+foundKey+'）');
+        const totalMinutes = Object.values(daily).reduce((s,d)=>s+(d.timeReview||0)+(d.timeBasic||0)+(d.timePiece||0), 0);
+        const totalHours = (totalMinutes/60).toFixed(1);
+        if(manual) toast('✅ 导入 '+imported+' 天，总计 '+totalHours+' 小时'+(skipped>0?' (跳过'+skipped+'天)':''));
       } else {
         if(manual) toast('已有 '+Object.keys(daily).length+' 天数据，未发现新的可导入记录');
       }
